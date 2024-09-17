@@ -21,7 +21,7 @@ static const size_t DIM = 16;
 //----------------------------------------------------------------------------------------
 // Constructor
 A1::A1()
-    : current_col(0)
+    : current_col(0), maze(DIM)
 {
     colour[0] = 0.0f;
     colour[1] = 0.0f;
@@ -48,9 +48,9 @@ void A1::init()
     cout << "Random number seed = " << rseed << endl;
 
     // DELETE FROM HERE...
-    Maze m(DIM);
-    m.digMaze();
-    m.printMaze();
+    maze.reset();
+    maze.digMaze();
+    maze.printMaze();
 
     // ...TO HERE
 
@@ -300,6 +300,7 @@ void A1::draw()
 {
     // Create a global transformation for the model (centre it).
     mat4 W;
+    mat4 cube_position;
     W = glm::translate(W, vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
 
     m_shader.enable();
@@ -314,10 +315,25 @@ void A1::draw()
     glUniform3f(col_uni, 1, 1, 1);
     glDrawArrays(GL_LINES, 0, (3 + DIM) * 4);
 
-    W = glm::translate(W, vec3(-0.5f, 0.5f, -0.5f));
-    glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
+    glm::vec2 test_arr[] = {
+        {0, 0},
+        {0, 1},
+        {1, 0}};
     glBindVertexArray(m_cube_vao);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+    glm::vec3 base = {0.5f, 0.5f, 0.5f};
+
+    for (int i = 0; i < DIM; ++i)
+    {
+        for (int j = 0; j < DIM; ++j)
+        {
+            if (maze.getValue(i, j) == 1)
+            {
+                cube_position = glm::translate(W, vec3(i + base.x, base.y, j + base.z));
+                glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(cube_position));
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+            }
+        }
+    }
 
     // Draw the cubes
     // Highlight the active square.
