@@ -21,11 +21,11 @@ static const size_t DIM = 16;
 //----------------------------------------------------------------------------------------
 // Constructor
 A1::A1()
-    : current_col(0), maze(DIM)
+    : current_col(0), maze(DIM), m_cube_color({1.0f, 0.f, 0.f}), m_floor_color({1.0f, 1.0f, 0.0f}), m_shape_rotation(0.0f), height(1), scale(0)
 {
-    colour[0] = 0.0f;
-    colour[1] = 0.0f;
-    colour[2] = 0.0f;
+    colour[0] = m_cube_color.r;
+    colour[1] = m_cube_color.g;
+    colour[2] = m_cube_color.b;
 }
 
 //----------------------------------------------------------------------------------------
@@ -49,7 +49,6 @@ void A1::init()
 
     // DELETE FROM HERE...
     maze.reset();
-    maze.digMaze();
     maze.printMaze();
 
     // ...TO HERE
@@ -210,6 +209,36 @@ void A1::initGrid()
     glEnableVertexAttribArray(posAttrib);
     glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
+    glGenVertexArrays(1, &m_floor_vao);
+    glBindVertexArray(m_floor_vao);
+
+    GLfloat floor_vertices[] = {
+        0,
+        0,
+        0,
+        0,
+        0,
+        DIM,
+        DIM,
+        0,
+        DIM,
+        DIM,
+        0,
+        DIM,
+        DIM,
+        0,
+        0,
+        0,
+        0,
+        0,
+
+    };
+    glGenBuffers(1, &m_floor_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, m_floor_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(floor_vertices), floor_vertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(posAttrib);
+    glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
     // Reset state to prevent rogue code from messing with *my*
     // stuff!
     glBindVertexArray(0);
@@ -253,6 +282,31 @@ void A1::guiLogic()
     {
         glfwSetWindowShouldClose(m_window, GL_TRUE);
     }
+    if (ImGui::Button("Dig Maze"))
+    {
+        maze.reset();
+        maze.digMaze();
+    }
+    if (ImGui::Button("Reset"))
+    {
+        maze.reset();
+    }
+    switch (current_col)
+    {
+    case 0:
+        m_cube_color.r = colour[0];
+        m_cube_color.g = colour[1];
+        m_cube_color.b = colour[2];
+        break;
+    case 1:
+        m_floor_color.r = colour[0];
+        m_floor_color.g = colour[1];
+        m_floor_color.b = colour[2];
+        break;
+
+    default:
+        break;
+    }
 
     // Eventually you'll create multiple colour widgets with
     // radio buttons.  If you use PushID/PopID to give them all
@@ -262,13 +316,21 @@ void A1::guiLogic()
 
     // Prefixing a widget name with "##" keeps it from being
     // displayed.
-
     ImGui::PushID(0);
-    ImGui::ColorEdit3("##Colour", colour);
+    ImGui::ColorEditMode(ImGuiColorEditMode_RGB);
+    ImGui::ColorEdit3("Colour", colour);
     ImGui::SameLine();
-    if (ImGui::RadioButton("##Col", &current_col, 0))
+    if (ImGui::RadioButton("Walls", &current_col, 0))
     {
-        // Select this colour.
+        colour[0] = m_cube_color.r;
+        colour[1] = m_cube_color.g;
+        colour[2] = m_cube_color.b;
+    }
+    if (ImGui::RadioButton("Floors", &current_col, 1))
+    {
+        colour[0] = m_floor_color.r;
+        colour[1] = m_floor_color.g;
+        colour[2] = m_floor_color.b;
     }
     ImGui::PopID();
 
@@ -302,16 +364,25 @@ void A1::draw()
     mat4 W;
     mat4 cube_position;
     W = glm::translate(W, vec3(-float(DIM) / 2.0f, 0, -float(DIM) / 2.0f));
+    mat4 scale_mat = glm::scale(view, vec3{1.f + scale, 1.f + scale, 1.f + scale});
+    vec3 z_axis(0.0f, 1.0f, 0.0f);
+    mat4 rotate = glm::rotate(mat4(), m_shape_rotation, z_axis);
 
+    mat4 view_modified = scale_mat * rotate;
     m_shader.enable();
     glEnable(GL_DEPTH_TEST);
 
     glUniformMatrix4fv(P_uni, 1, GL_FALSE, value_ptr(proj));
-    glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view));
+    glUniformMatrix4fv(V_uni, 1, GL_FALSE, value_ptr(view_modified));
     glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(W));
 
+    glUniform3f(col_uni, m_floor_color.r, m_floor_color.g, m_floor_color.b);
+
+    glBindVertexArray(m_floor_vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
     // Just draw the grid for now.
     glBindVertexArray(m_grid_vao);
+
     glUniform3f(col_uni, 1, 1, 1);
     glDrawArrays(GL_LINES, 0, (3 + DIM) * 4);
 
@@ -322,15 +393,23 @@ void A1::draw()
     glBindVertexArray(m_cube_vao);
     glm::vec3 base = {0.5f, 0.5f, 0.5f};
 
-    for (int i = 0; i < DIM; ++i)
+    GLint uniformLocation_colour = m_shader.getUniformLocation("colour");
+
+    // Set the uniform's value.
+    for (int x = 0; x < DIM; ++x)
     {
-        for (int j = 0; j < DIM; ++j)
+        for (int z = 0; z < DIM; ++z)
         {
-            if (maze.getValue(i, j) == 1)
+            if (maze.getValue(x, z) == 1)
             {
-                cube_position = glm::translate(W, vec3(i + base.x, base.y, j + base.z));
-                glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(cube_position));
-                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+                for (int y = 0; y < height; ++y)
+                {
+                    glUniform3f(uniformLocation_colour, m_cube_color.r, m_cube_color.g,
+                                m_cube_color.b);
+                    cube_position = glm::translate(W, vec3(x + base.x, y + base.y, z + base.z));
+                    glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(cube_position));
+                    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+                }
             }
         }
     }
@@ -412,7 +491,11 @@ bool A1::mouseScrollEvent(double xOffSet, double yOffSet)
 {
     bool eventHandled(false);
 
-    // Zoom in or out.
+    scale += yOffSet / 20;
+
+    scale = std::min(std::max(scale, -0.7f), 1.3f);
+
+    m_shape_rotation += xOffSet / 20;
 
     return eventHandled;
 }
@@ -441,6 +524,31 @@ bool A1::keyInputEvent(int key, int action, int mods)
     // Fill in with event handling code...
     if (action == GLFW_PRESS)
     {
+        if (key == GLFW_KEY_Q)
+        {
+            glfwSetWindowShouldClose(m_window, GL_TRUE);
+        }
+        if (key == GLFW_KEY_D)
+        {
+            maze.reset();
+            maze.digMaze();
+        }
+        if (key == GLFW_KEY_R)
+        {
+            maze.reset();
+        }
+        if (key == GLFW_KEY_SPACE)
+        {
+            height = std::min(height + 1, 6);
+        }
+        if (key == GLFW_KEY_BACKSPACE)
+        {
+            height = std::max(height - 1, 0);
+        }
+        if (key == GLFW_KEY_Y)
+        {
+            m_shape_rotation += 0.01f;
+        }
         // Respond to some key events.
     }
 

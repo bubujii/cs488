@@ -34,6 +34,7 @@ private:
     void initCubeIbo();
     void initGrid();
     void initCubes();
+    void digMaze();
 
     Maze maze;
 
@@ -51,11 +52,20 @@ private:
     GLuint m_cube_vao;
     GLuint m_cube_vbo;
     GLuint m_cube_ibo;
+    glm::vec3 m_cube_color;
+
+    GLuint m_floor_vao;
+    GLuint m_floor_vbo;
+    glm::vec3 m_floor_color;
 
     // Matrices controlling the camera and projection.
     glm::mat4 proj;
     glm::mat4 view;
 
+    GLfloat m_shape_rotation;
+
+    int height;
+    GLfloat scale;
     float colour[3];
     int current_col;
 };
