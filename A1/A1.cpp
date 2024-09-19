@@ -27,7 +27,7 @@ A1::A1() : current_col(0),
 		   m_floor_color({1.0f, 1.0f, 0.0f}),
 		   m_avatar_color({0.0f, 1.0f, 0.0f}),
 		   m_shape_rotation(0.0f),
-		   avatar_position({0, 0}),
+		   avatar_position({0.5f, 0.5f}),
 		   height(1),
 		   scale(0),
 		   with_force(false)
@@ -406,6 +406,11 @@ void A1::guiLogic()
 		m_floor_color.g = colour[1];
 		m_floor_color.b = colour[2];
 		break;
+	case 2:
+		m_avatar_color.r = colour[0];
+		m_avatar_color.g = colour[1];
+		m_avatar_color.b = colour[2];
+		break;
 
 	default:
 		break;
@@ -434,6 +439,12 @@ void A1::guiLogic()
 		colour[0] = m_floor_color.r;
 		colour[1] = m_floor_color.g;
 		colour[2] = m_floor_color.b;
+	}
+	if (ImGui::RadioButton("Avatar", &current_col, 2))
+	{
+		colour[0] = m_avatar_color.r;
+		colour[1] = m_avatar_color.g;
+		colour[2] = m_avatar_color.b;
 	}
 	ImGui::PopID();
 
