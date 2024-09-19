@@ -87,7 +87,6 @@ private:
     glm::vec2 mouse_position;
     bool mousehold;
     GLfloat velocity_rotation;
-    GLfloat average_velocity;
     GLfloat velocity_on_release;
 
     std::chrono::system_clock::time_point time_of_release;

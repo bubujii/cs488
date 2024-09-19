@@ -33,7 +33,6 @@ A1::A1() : current_col(0),
            scale(0),
            with_force(false),
            velocity_rotation(0),
-           average_velocity(0),
            velocity_on_release(0)
 {
     colour[0] = m_cube_color.r;
