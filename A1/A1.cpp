@@ -101,34 +101,30 @@ void A1::init()
 void A1::initCubeIbo()
 {
 
-	GLushort indices[] = {
-		0, 1, 2, 2, 3, 0,
+	GLushort indices[36] = {
+		0, 3, 2, 2, 1, 0, // front face
 
-		0, 1, 5, 5, 4, 0,
+		0, 1, 5, 5, 4, 0, // left face
 
-		4, 5, 6, 6, 7, 4,
+		4, 5, 6, 6, 7, 4, // back face
 
-		7, 6, 2, 2, 3, 7,
+		7, 6, 2, 2, 3, 7, // right face
 
-		1, 5, 6, 6, 2, 1,
+		1, 2, 6, 6, 5, 1, // top face
 
-		0, 4, 7, 7, 3, 0
+		0, 3, 7, 7, 4, 0 // bottom face
 
 	};
-	GLushort *save_indices = new GLushort[36];
-	for (int i = 0; i < 36; ++i)
-	{
-		save_indices[i] = indices[i];
-	}
 
 	glBindVertexArray(m_cube_vao);
+
 	glGenBuffers(1, &m_cube_ibo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_cube_ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 36 * sizeof(GLushort), save_indices, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
 	glBindVertexArray(0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-	delete[] save_indices;
 	CHECK_GL_ERRORS;
 }
 
@@ -138,34 +134,19 @@ void A1::initCubes()
 	GLfloat sidelength = 1;
 
 	GLfloat vertices[] = {
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		0.5f * sidelength,
-		-0.5f * sidelength,
-		0.5f * sidelength,
+		-0.5f * sidelength, -0.5f * sidelength, -0.5f * sidelength, //
+		-0.5f * sidelength, 0.5f * sidelength, -0.5f * sidelength,	//
+		0.5f * sidelength, 0.5f * sidelength, -0.5f * sidelength,	//
+		0.5f * sidelength, -0.5f * sidelength, -0.5f * sidelength,	//
+		-0.5f * sidelength, -0.5f * sidelength, 0.5f * sidelength,	//
+		-0.5f * sidelength, 0.5f * sidelength, 0.5f * sidelength,	//
+		0.5f * sidelength, 0.5f * sidelength, 0.5f * sidelength,	//
+		0.5f * sidelength, -0.5f * sidelength, 0.5f * sidelength,	//
 	};
 
 	glGenVertexArrays(1, &m_cube_vao);
 	glBindVertexArray(m_cube_vao);
+
 	glGenBuffers(1, &m_cube_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, m_cube_vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
