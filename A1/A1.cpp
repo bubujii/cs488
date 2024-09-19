@@ -7,7 +7,6 @@
 
 #include <sys/types.h>
 #include <unistd.h>
-#include <vector>
 
 #include <imgui/imgui.h>
 #include <glm/glm.hpp>
@@ -27,10 +26,13 @@ A1::A1() : current_col(0),
 		   m_floor_color({1.0f, 1.0f, 0.0f}),
 		   m_avatar_color({0.0f, 1.0f, 0.0f}),
 		   m_shape_rotation(0.0f),
-		   avatar_position({0.5f, 0.5f}),
+		   avatar_position({0.f, 0.f}),
 		   height(1),
 		   scale(0),
-		   with_force(false)
+		   with_force(false),
+		   velocity_rotation(0),
+		   average_velocity(0),
+		   acceleration_rotation(0)
 {
 	colour[0] = m_cube_color.r;
 	colour[1] = m_cube_color.g;
@@ -262,10 +264,10 @@ void A1::initGrid()
 
 void A1::initAvatar()
 {
-	int longitude_count = 180;
-	int latitude_count = 90;
+	int longitude_count = 10;
+	int latitude_count = 10;
 	float radius = 0.4;
-	std::vector<float> vertices;
+	GLfloat vertices[(latitude_count + 1) * (longitude_count + 1) * 3];
 
 	float x, y, z;
 
@@ -284,69 +286,55 @@ void A1::initAvatar()
 
 			x = radius * cosf(vertical_angle) * cosf(horizontal_angle); // r * cos(u) * cos(v)
 			y = radius * cosf(vertical_angle) * sinf(horizontal_angle); // r * cos(u) * sin(v)
-			vertices.push_back(x);
-			vertices.push_back(y);
-			vertices.push_back(z);
+			int index = int(i * (longitude_count + 1) + j) * 3;
+			vertices[index] = x;
+			vertices[index + 1] = y;
+			vertices[index + 2] = z;
 		}
 	}
 
-	std::vector<int> indices;
-	int k1, k2;
+	number_of_indices = (latitude_count - 1) * longitude_count * 6 + (longitude_count - 1) * 3;
+	GLuint indices[number_of_indices];
+	int lat_1, lat_2;
+	int index = 0;
 	for (int i = 0; i < latitude_count; ++i)
 	{
-		k1 = i * (longitude_count + 1); // add one to account for pole
-		k2 = k1 + longitude_count + 1;	// add one to account for pole
+		lat_1 = i * (longitude_count + 1);	 // add one to account for pole
+		lat_2 = lat_1 + longitude_count + 1; // add one to account for pole
 
-		for (int j = 0; j < longitude_count; ++j, ++k1, ++k2)
+		for (int j = 0; j < longitude_count; ++j, ++lat_1, ++lat_2)
 		{
-
 			if (i != 0) // called once if at bottom
 			{
-				indices.push_back(k1);
-				indices.push_back(k2);
-				indices.push_back(k1 + 1);
+				index = longitude_count * 3 + (i - 1) * longitude_count * 6 + j * 6;
+				indices[index] = lat_1;
+				indices[index + 1] = lat_2;
+				indices[index + 2] = lat_1 + 1;
+				index += 3;
 			}
 
 			if (i != (latitude_count - 1)) // called once if at top
 			{
-				indices.push_back(k1 + 1);
-				indices.push_back(k2);
-				indices.push_back(k2 + 1);
+				indices[index] = lat_1 + 1;
+				indices[index + 1] = lat_2;
+				indices[index + 2] = lat_2 + 1;
+				index += 3;
 			}
 		}
 	}
-
-	int vertices_sz = vertices.size();
-	GLfloat vertices_save[vertices_sz];
-
-	for (int i = 0; i < vertices_sz; ++i)
-	{
-		vertices_save[i] = vertices[i];
-	}
-
-	int indices_sz = indices.size();
-	GLuint indices_save[indices_sz];
-
-	number_of_indices = indices_sz;
-
-	for (int i = 0; i < indices_sz; ++i)
-	{
-		indices_save[i] = indices[i];
-	}
-
 	glGenVertexArrays(1, &m_avatar_vao);
 	glBindVertexArray(m_avatar_vao);
 
 	glGenBuffers(1, &m_avatar_vbo);
 	glBindBuffer(GL_ARRAY_BUFFER, m_avatar_vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_save), vertices_save, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 	GLint posAttrib = m_shader.getAttribLocation("position");
 	glEnableVertexAttribArray(posAttrib);
 	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 	glGenBuffers(1, &m_avatar_ibo);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_avatar_ibo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices_save), indices_save, GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
 	glBindVertexArray(0);
 	CHECK_GL_ERRORS;
@@ -393,6 +381,8 @@ void A1::guiLogic()
 	if (ImGui::Button("Reset"))
 	{
 		maze.reset();
+		avatar_position.x = 0;
+		avatar_position.y = 0;
 	}
 	switch (current_col)
 	{
@@ -448,6 +438,22 @@ void A1::guiLogic()
 	}
 	ImGui::PopID();
 
+	if (!mousehold && abs(velocity_rotation) > 0.05)
+	{
+		GLfloat prev_rotation = velocity_rotation;
+		// velocity_rotation -= 0.15 * sign(velocity_rotation);
+		velocity_rotation /= 1.05;
+		if (sign(prev_rotation) != sign(velocity_rotation))
+		{
+			velocity_rotation = 0;
+		}
+		m_shape_rotation += pow(velocity_rotation / 2, 2) * sign(velocity_rotation) / 20;
+	}
+	else if (!mousehold)
+	{
+		velocity_rotation = 0;
+	}
+
 	/*
 			// For convenience, you can uncomment this to show ImGui's massive
 			// demonstration window right in your application.  Very handy for
@@ -499,7 +505,7 @@ void A1::draw()
 	glUniform3f(col_uni, 1, 1, 1);
 	glDrawArrays(GL_LINES, 0, (3 + DIM) * 4);
 
-	mat4 avatar_transform = glm::translate(W, vec3(avatar_position.x, 0.5f, avatar_position.y));
+	mat4 avatar_transform = glm::translate(W, vec3(avatar_position.x + 0.5f, 0.5f, avatar_position.y + 0.5f));
 	glUniformMatrix4fv(M_uni, 1, GL_FALSE, value_ptr(avatar_transform));
 	glUniform3f(col_uni, m_avatar_color.r, m_avatar_color.g, m_avatar_color.b);
 	glBindVertexArray(m_avatar_vao);
@@ -580,6 +586,14 @@ bool A1::mouseMoveEvent(double xPos, double yPos)
 		// Probably need some instance variables to track the current
 		// rotation amount, and maybe the previous X position (so
 		// that you can rotate relative to the *change* in X.
+		acceleration_rotation = (xPos - mouse_position.x) / 10;
+		if (mousehold)
+		{
+			velocity_rotation = acceleration_rotation;
+			m_shape_rotation += velocity_rotation / 20;
+		}
+		mouse_position.x = float(xPos);
+		mouse_position.y = float(yPos);
 	}
 
 	return eventHandled;
@@ -595,8 +609,14 @@ bool A1::mouseButtonInputEvent(int button, int actions, int mods)
 
 	if (!ImGui::IsMouseHoveringAnyWindow())
 	{
-		// The user clicked in the window.  If it's the left
-		// mouse button, initiate a rotation.
+		if (actions == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT)
+		{
+			mousehold = true;
+		}
+		if (actions == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_LEFT)
+		{
+			mousehold = false;
+		}
 	}
 
 	return eventHandled;
@@ -657,6 +677,8 @@ bool A1::keyInputEvent(int key, int action, int mods)
 		if (key == GLFW_KEY_R)
 		{
 			maze.reset();
+			avatar_position.x = 0;
+			avatar_position.y = 0;
 		}
 		if (key == GLFW_KEY_SPACE)
 		{
@@ -709,14 +731,18 @@ void A1::positionAvatar()
 	{
 		if (maze.getValue(0, row) == 0)
 		{
-			avatar_position.x = 0.5f;
-			avatar_position.y = row + 0.5f;
+			avatar_position.x = 0;
+			avatar_position.y = row;
 		}
 	}
 }
 
 void A1::moveAvatar(int x, int y, bool with_force)
 {
+	if (avatar_position.x + x < 0 || avatar_position.x + x >= DIM || avatar_position.y + y < 0 || avatar_position.y + y >= DIM)
+	{
+		return;
+	}
 	if (maze.getValue(avatar_position.x + x, avatar_position.y + y))
 	{
 		if (with_force)

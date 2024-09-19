@@ -79,4 +79,9 @@ private:
 	int current_col;
 
 	bool with_force;
+	glm::vec2 mouse_position;
+	bool mousehold;
+	GLfloat velocity_rotation;
+	GLfloat average_velocity;
+	GLfloat acceleration_rotation;
 };
