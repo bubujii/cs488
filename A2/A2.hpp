@@ -14,10 +14,10 @@
 // in one shot, rather than reallocating each frame.
 const GLsizei kMaxVertices = 1000;
 
-
 // Convenience class for storing vertex data in CPU memory.
 // Data should be copied over to GPU memory via VBO storage before rendering.
-class VertexData {
+class VertexData
+{
 public:
 	VertexData();
 
@@ -27,8 +27,29 @@ public:
 	GLsizei numVertices;
 };
 
+class Model
+{
+public:
+	Model();
+	virtual ~Model();
+	std::vector<glm::vec4> getVertices();
+	void transform(glm::mat4 transform_by_matrix);
+	std::vector<glm::vec4> applyMatrix(glm::mat4 matrix);
 
-class A2 : public CS488Window {
+protected:
+	glm::mat4 transformation_matrix;
+	std::vector<glm::vec4> vertices;
+};
+
+class Cube : public Model
+{
+public:
+	Cube();
+	virtual ~Cube();
+};
+
+class A2 : public CS488Window
+{
 public:
 	A2();
 	virtual ~A2();
@@ -55,21 +76,24 @@ protected:
 
 	void initLineData();
 
-	void setLineColour(const glm::vec3 & colour);
+	void setLineColour(const glm::vec3 &colour);
 
-	void drawLine (
-			const glm::vec2 & v0,
-			const glm::vec2 & v1
-	);
+	void drawLine(
+		const glm::vec2 &v0,
+		const glm::vec2 &v1);
 
 	ShaderProgram m_shader;
 
-	GLuint m_vao;            // Vertex Array Object
-	GLuint m_vbo_positions;  // Vertex Buffer Object
-	GLuint m_vbo_colours;    // Vertex Buffer Object
+	GLuint m_vao;			// Vertex Array Object
+	GLuint m_vbo_positions; // Vertex Buffer Object
+	GLuint m_vbo_colours;	// Vertex Buffer Object
 
 	VertexData m_vertexData;
 
 	glm::vec3 m_currentLineColour;
 
+	Cube cube;
+
+	glm::mat4 view_matrix;
+	glm::mat4 projection_matrix;
 };
