@@ -34,7 +34,7 @@ VertexData::VertexData()
 //----------------------------------------------------------------------------------------
 // Constructor
 A2::A2()
-	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0})
+	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix()
 {
 }
 
@@ -63,8 +63,18 @@ void A2::init()
 
 	mapVboDataToVertexAttributeLocation();
 
-	view_matrix = glm::mat4();
+	initScene();
+}
 
+void A2::initScene()
+{
+
+	glm::mat4 universal_scale = glm::mat4(0.25f);
+	universal_scale[3][3] = 1.f;
+	cube.reset(universal_scale);
+	worldGnomon.reset(universal_scale);
+
+	auto view_matrix_mat = glm::mat4();
 	glm::vec3 forwardVector = glm::vec3();
 	glm::vec3 positionOfCamera = {1, 3, 4};
 	glm::vec3 positionOfTarget = {0, 0, 0};
@@ -81,11 +91,12 @@ void A2::init()
 	float translationY = glm::dot(positionOfCamera, upVector);
 	float translationZ = glm::dot(positionOfCamera, forwardVector);
 
-	view_matrix = glm::mat4({rightVector.x, upVector.x, forwardVector.x, 0,
-							 rightVector.y, upVector.y, forwardVector.y, 0,
-							 rightVector.z, upVector.z, forwardVector.z, 0,
-							 -translationX, -translationY, -translationZ, 1});
-	std::cout << view_matrix << std::endl;
+	view_matrix_mat = glm::mat4({rightVector.x, upVector.x, forwardVector.x, 0,
+								 rightVector.y, upVector.y, forwardVector.y, 0,
+								 rightVector.z, upVector.z, forwardVector.z, 0,
+								 -translationX, -translationY, -translationZ, 1});
+
+	view_matrix.reset(view_matrix_mat);
 
 	projection_matrix = glm::mat4(1.f); // orthographic for now
 	projection_matrix[2][2] = 0;
@@ -236,7 +247,7 @@ void A2::appLogic()
 	// drawLine(vec2(0.25f, 0.25f), vec2(-0.25f, 0.25f));
 	// drawLine(vec2(-0.25f, 0.25f), vec2(-0.25f, -0.25f));
 
-	auto verts = cube.applyMatrix(projection_matrix * view_matrix);
+	auto verts = cube.applyMatrix(projection_matrix * view_matrix.getTransform());
 
 	// std::cout << "------------" << std::endl;
 
@@ -266,14 +277,18 @@ void A2::appLogic()
 	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
 	drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[6].x, verts[6].y));
 
-	auto gnomon_points = cube.applyMatrixSubModel(projection_matrix * view_matrix);
+	auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
+	auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
 
 	setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
-	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[1].x, gnomon_points[1].y});
+	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[1].x, gnomon_cube_points[1].y});
+	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[1].x, gnomon_world_points[1].y});
 	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
-	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[2].x, gnomon_points[2].y});
+	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[2].x, gnomon_cube_points[2].y});
+	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[2].x, gnomon_world_points[2].y});
 	setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
-	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[3].x, gnomon_points[3].y});
+	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[3].x, gnomon_cube_points[3].y});
+	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[3].x, gnomon_world_points[3].y});
 }
 
 //----------------------------------------------------------------------------------------
@@ -320,6 +335,10 @@ void A2::guiLogic()
 	{
 	}
 
+	if (ImGui::Button("Reset"))
+	{
+		initScene();
+	}
 	// Create Button, and check if it was clicked:
 	if (ImGui::Button("Quit Application"))
 	{
@@ -424,8 +443,19 @@ bool A2::mouseMoveEvent(
 				break;
 
 			case ROTATE_MODEL:
-				change /= 20;
+				change /= 15;
 				cube.rotate(active_buttons * change);
+				break;
+
+			case TRANSLATE_VIEW:
+				view_matrix.translate(active_buttons * change);
+				break;
+
+			case ROTATE_VIEW:
+				change /= 5;
+				view_matrix.rotate(active_buttons * change);
+				break;
+
 			default:
 				break;
 			}
@@ -557,6 +587,10 @@ bool A2::keyInputEvent(
 		{
 			current_change = VIEWPORT;
 		}
+		if (key == GLFW_KEY_A)
+		{
+			initScene();
+		}
 	}
 
 	return eventHandled;
@@ -564,9 +598,7 @@ bool A2::keyInputEvent(
 
 Model::Model() : subModel(nullptr)
 {
-	transformation_matrix = glm::mat4(0.25f);
-	transformation_matrix[3][3] = 1.f;
-	std::cout << transformation_matrix << std::endl;
+	transformation_matrix = glm::mat4(1.f);
 }
 
 Model::~Model()
@@ -647,6 +679,15 @@ std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
 	}
 }
 
+void Model::reset(glm::mat4 with)
+{
+	transformation_matrix = with;
+	if (subModel)
+	{
+		subModel->reset(with);
+	}
+}
+
 void Cube::scale(glm::vec3 scale_vector)
 {
 	scale_vector.x = std::max(scale_vector.x, 0.01f);
@@ -708,4 +749,19 @@ Gnomon::Gnomon()
 
 Gnomon::~Gnomon()
 {
+}
+
+ViewMatrix::ViewMatrix(glm::mat4 initial_matrix)
+{
+	transformation_matrix = initial_matrix;
+}
+ViewMatrix::ViewMatrix()
+{
+}
+
+ViewMatrix::~ViewMatrix() {}
+
+glm::mat4 ViewMatrix::getTransform()
+{
+	return transformation_matrix;
 }

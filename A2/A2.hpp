@@ -38,6 +38,7 @@ public:
 	void translate(glm::vec3 translate_vector);
 	void rotate(glm::vec3 angles);
 	std::vector<glm::vec4> applyMatrixSubModel(glm::mat4 matrix);
+	void reset(glm::mat4 with);
 
 protected:
 	glm::mat4 transformation_matrix;
@@ -50,6 +51,15 @@ class Gnomon : public Model
 public:
 	Gnomon();
 	virtual ~Gnomon();
+};
+
+class ViewMatrix : public Model
+{
+public:
+	ViewMatrix();
+	ViewMatrix(glm::mat4 initial_matrix);
+	~ViewMatrix();
+	glm::mat4 getTransform();
 };
 
 class Cube : public Model
@@ -90,6 +100,7 @@ protected:
 	void uploadVertexDataToVbos();
 
 	void initLineData();
+	void initScene();
 
 	void setLineColour(const glm::vec3 &colour);
 
@@ -109,11 +120,12 @@ protected:
 
 	Cube cube;
 
-	glm::mat4 view_matrix;
+	ViewMatrix view_matrix;
 	glm::mat4 projection_matrix;
 
 	int current_change;
 	glm::vec3 active_buttons;
 
 	glm::vec2 mouse_position;
+	Gnomon worldGnomon;
 };
