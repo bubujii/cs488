@@ -13,6 +13,14 @@ using namespace std;
 #include <glm/gtx/io.hpp>
 using namespace glm;
 
+static const int ROTATE_VIEW = 0;
+static const int TRANSLATE_VIEW = 1;
+static const int PERSPECTIVE = 2;
+static const int ROTATE_MODEL = 3;
+static const int TRANSLATE_MODEL = 4;
+static const int SCALE_MODEL = 5;
+static const int VIEWPORT = 6;
+
 //----------------------------------------------------------------------------------------
 // Constructor
 VertexData::VertexData()
@@ -26,7 +34,7 @@ VertexData::VertexData()
 //----------------------------------------------------------------------------------------
 // Constructor
 A2::A2()
-	: m_currentLineColour(vec3(0.0f)), cube()
+	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0})
 {
 }
 
@@ -283,6 +291,28 @@ void A2::guiLogic()
 
 	// Add more gui elements here here ...
 
+	if (ImGui::RadioButton("Rotate View (o)", &current_change, ROTATE_VIEW))
+	{
+	}
+	if (ImGui::RadioButton("Translate View (e)", &current_change, TRANSLATE_VIEW))
+	{
+	}
+	if (ImGui::RadioButton("Perspective (p)", &current_change, PERSPECTIVE))
+	{
+	}
+	if (ImGui::RadioButton("Rotate Model (r)", &current_change, ROTATE_MODEL))
+	{
+	}
+	if (ImGui::RadioButton("Translate Model (t)", &current_change, TRANSLATE_MODEL))
+	{
+	}
+	if (ImGui::RadioButton("Scale Model (s)", &current_change, SCALE_MODEL))
+	{
+	}
+	if (ImGui::RadioButton("Viewport (v)", &current_change, VIEWPORT))
+	{
+	}
+
 	// Create Button, and check if it was clicked:
 	if (ImGui::Button("Quit Application"))
 	{
@@ -370,8 +400,28 @@ bool A2::mouseMoveEvent(
 	double yPos)
 {
 	bool eventHandled(false);
-
 	// Fill in with event handling code...
+	if (!ImGui::IsMouseHoveringAnyWindow())
+	{
+		if (active_buttons.x != 0 || active_buttons.y != 0 || active_buttons.z != 0)
+		{
+			float change = float((xPos - mouse_position.x) / 10);
+			switch (current_change)
+			{
+			case TRANSLATE_MODEL:
+				cube.translate(active_buttons * change);
+				break;
+
+			case SCALE_MODEL:
+				cube.scale(glm::vec3(1.f) + active_buttons * change);
+				break;
+			default:
+				break;
+			}
+		}
+		mouse_position.x = float(xPos);
+		mouse_position.y = float(yPos);
+	}
 
 	return eventHandled;
 }
@@ -387,7 +437,41 @@ bool A2::mouseButtonInputEvent(
 {
 	bool eventHandled(false);
 
-	// Fill in with event handling code...
+	if (!ImGui::IsMouseHoveringAnyWindow())
+	{
+		if (actions == GLFW_PRESS)
+		{
+			if (button == GLFW_MOUSE_BUTTON_LEFT)
+			{
+				active_buttons.x = 1;
+			}
+			if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+			{
+				active_buttons.y = 1;
+			}
+			if (button == GLFW_MOUSE_BUTTON_RIGHT)
+			{
+				active_buttons.z = 1;
+			}
+			eventHandled = true;
+		}
+		if (actions == GLFW_RELEASE)
+		{
+			if (button == GLFW_MOUSE_BUTTON_LEFT)
+			{
+				active_buttons.x = 0;
+			}
+			if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+			{
+				active_buttons.y = 0;
+			}
+			if (button == GLFW_MOUSE_BUTTON_RIGHT)
+			{
+				active_buttons.z = 0;
+			}
+			eventHandled = true;
+		}
+	}
 
 	return eventHandled;
 }
@@ -473,6 +557,25 @@ std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
 		ret_points.push_back(matrix * point);
 	}
 	return ret_points;
+}
+
+void Model::translate(glm::vec3 translate_vector)
+{
+	glm::mat4 translation_matrix = glm::mat4(1.f);
+	translation_matrix[3][0] = translate_vector.x;
+	translation_matrix[3][1] = translate_vector.y;
+	translation_matrix[3][2] = translate_vector.z;
+	transform(translation_matrix);
+}
+
+void Model::scale(glm::vec3 scale_vector)
+{
+	glm::mat4 scale_matrix = glm::mat4(1.f);
+	scale_matrix[0][0] = scale_vector.x;
+	scale_matrix[1][1] = scale_vector.y;
+	scale_matrix[2][2] = scale_vector.z;
+
+	transform(scale_matrix);
 }
 
 Cube::Cube() : Model()

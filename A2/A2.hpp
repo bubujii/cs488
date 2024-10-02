@@ -35,10 +35,20 @@ public:
 	std::vector<glm::vec4> getVertices();
 	void transform(glm::mat4 transform_by_matrix);
 	std::vector<glm::vec4> applyMatrix(glm::mat4 matrix);
+	void translate(glm::vec3 translate_vector);
+	void rotate(float angle, glm::vec3 axis);
+	void scale(glm::vec3 scale_vector);
 
 protected:
 	glm::mat4 transformation_matrix;
 	std::vector<glm::vec4> vertices;
+};
+
+class Gnomon : public Model
+{
+public:
+	Gnomon();
+	virtual ~Gnomon();
 };
 
 class Cube : public Model
@@ -96,4 +106,9 @@ protected:
 
 	glm::mat4 view_matrix;
 	glm::mat4 projection_matrix;
+
+	int current_change;
+	glm::vec3 active_buttons;
+
+	glm::vec2 mouse_position;
 };
