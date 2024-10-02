@@ -34,7 +34,7 @@ VertexData::VertexData()
 //----------------------------------------------------------------------------------------
 // Constructor
 A2::A2()
-	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix()
+	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix(), far(1), near(0.1), fov(30)
 {
 }
 
@@ -76,7 +76,7 @@ void A2::initScene()
 
 	auto view_matrix_mat = glm::mat4();
 	glm::vec3 forwardVector = glm::vec3();
-	glm::vec3 positionOfCamera = {1, 3, 4};
+	glm::vec3 positionOfCamera = {0, 0, -2};
 	glm::vec3 positionOfTarget = {0, 0, 0};
 	forwardVector = glm::normalize(positionOfCamera - positionOfTarget);
 
@@ -98,8 +98,17 @@ void A2::initScene()
 
 	view_matrix.reset(view_matrix_mat);
 
-	projection_matrix = glm::mat4(1.f); // orthographic for now
-	projection_matrix[2][2] = 0;
+	projection_matrix = glm::mat4(1.f);
+	float scaling_factor = 1.f / tanf((fov / 2) * (M_PI / 180));
+
+	projection_matrix[0][0] = scaling_factor;
+	projection_matrix[1][1] = scaling_factor;
+
+	projection_matrix[2][2] = -(far + near / (far - near));
+	projection_matrix[2][3] = -1.f;
+	projection_matrix[3][3] = 0;
+
+	projection_matrix[3][2] = -(2 * far * near / (far - near));
 }
 
 //----------------------------------------------------------------------------------------
@@ -248,13 +257,6 @@ void A2::appLogic()
 	// drawLine(vec2(-0.25f, 0.25f), vec2(-0.25f, -0.25f));
 
 	auto verts = cube.applyMatrix(projection_matrix * view_matrix.getTransform());
-
-	// std::cout << "------------" << std::endl;
-
-	// std::cout << verts[4] << std::endl;
-	// std::cout << verts[0] << std::endl;
-	// std::cout << verts[1] << std::endl;
-	// std::cout << verts[5] << std::endl;
 
 	setLineColour(vec3(0.0f, 1.0f, 1.0f)); // cyan
 	drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[3].x, verts[3].y));
@@ -542,6 +544,7 @@ bool A2::windowResizeEvent(
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
+	aspect = height / width;
 
 	return eventHandled;
 }
@@ -610,6 +613,7 @@ bool A2::keyInputEvent(
 Model::Model() : subModel(nullptr)
 {
 	transformation_matrix = glm::mat4(1.f);
+	scaling_matrix = glm::mat4(1.f);
 }
 
 Model::~Model()
@@ -621,7 +625,7 @@ std::vector<glm::vec4> Model::getVertices()
 	std::vector<glm::vec4> ret_vertices;
 	for (auto point : this->vertices)
 	{
-		ret_vertices.push_back(this->transformation_matrix * point);
+		ret_vertices.push_back(scaling_matrix * transformation_matrix * point);
 	}
 	return ret_vertices;
 }
@@ -637,7 +641,8 @@ std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
 	std::vector<glm::vec4> ret_points;
 	for (auto point : points)
 	{
-		ret_points.push_back(matrix * point);
+		point = matrix * point;
+		ret_points.push_back(point / point.w);
 	}
 	return ret_points;
 }
@@ -646,7 +651,8 @@ void Model::translate(glm::vec3 translate_vector)
 {
 	if (subModel)
 	{
-		subModel->translate(translate_vector);
+		vec4 something = scaling_matrix * vec4({translate_vector.x, translate_vector.y, translate_vector.z, 1});
+		subModel->translate({something.x, something.y, something.z});
 	}
 	glm::mat4 translation_matrix = glm::mat4(1.f);
 	translation_matrix[3][0] = translate_vector.x;
@@ -693,6 +699,7 @@ std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
 void Model::reset(glm::mat4 with)
 {
 	transformation_matrix = with;
+	scaling_matrix = glm::mat4(1.f);
 	if (subModel)
 	{
 		subModel->reset(with);
@@ -725,7 +732,8 @@ void Cube::scale(glm::vec3 scale_vector)
 	scale_matrix[1][1] = scale_vector.y;
 	scale_matrix[2][2] = scale_vector.z;
 
-	transform(scale_matrix);
+	// this->subModel->transform(scale_matrix);
+	scaling_matrix *= scale_matrix;
 }
 
 Cube::Cube() : Model(), scale_amount({1, 1, 1})

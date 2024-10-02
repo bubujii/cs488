@@ -44,6 +44,7 @@ protected:
 	glm::mat4 transformation_matrix;
 	std::vector<glm::vec4> vertices;
 	Model *subModel;
+	glm::mat4 scaling_matrix;
 };
 
 class Gnomon : public Model
@@ -128,4 +129,9 @@ protected:
 
 	glm::vec2 mouse_position;
 	Gnomon worldGnomon;
+
+	float fov;
+	float far;
+	float near;
+	float aspect;
 };
