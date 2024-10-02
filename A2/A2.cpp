@@ -591,6 +591,17 @@ bool A2::keyInputEvent(
 		{
 			initScene();
 		}
+		if (key == GLFW_KEY_LEFT_SHIFT)
+		{
+			active_buttons.y = 1.0f;
+		}
+	}
+	if (action == GLFW_RELEASE)
+	{
+		if (key == GLFW_KEY_LEFT_SHIFT)
+		{
+			active_buttons.y = 0.0f;
+		}
 	}
 
 	return eventHandled;
