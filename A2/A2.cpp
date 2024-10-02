@@ -238,11 +238,6 @@ void A2::appLogic()
 
 	auto verts = cube.applyMatrix(projection_matrix * view_matrix);
 
-	for (auto point : verts)
-	{
-		// std::cout << point << std::endl;
-	}
-
 	// std::cout << "------------" << std::endl;
 
 	// std::cout << verts[4] << std::endl;
@@ -264,9 +259,21 @@ void A2::appLogic()
 
 	setLineColour(vec3(1.0f, 0.0f, 1.0f)); // magenta
 	drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[4].x, verts[4].y));
+	setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
 	drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[5].x, verts[5].y));
+	setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
 	drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[7].x, verts[7].y));
+	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
 	drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[6].x, verts[6].y));
+
+	auto gnomon_points = cube.applyMatrixSubModel(projection_matrix * view_matrix);
+
+	setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
+	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[1].x, gnomon_points[1].y});
+	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
+	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[2].x, gnomon_points[2].y});
+	setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
+	drawLine({gnomon_points[0].x, gnomon_points[0].y}, {gnomon_points[3].x, gnomon_points[3].y});
 }
 
 //----------------------------------------------------------------------------------------
@@ -415,12 +422,15 @@ bool A2::mouseMoveEvent(
 			case SCALE_MODEL:
 				cube.scale(glm::vec3(1.f) + active_buttons * change);
 				break;
+
+			case ROTATE_MODEL:
+				change /= 20;
+				cube.rotate(active_buttons * change);
 			default:
 				break;
 			}
 		}
 		mouse_position.x = float(xPos);
-		mouse_position.y = float(yPos);
 	}
 
 	return eventHandled;
@@ -517,12 +527,42 @@ bool A2::keyInputEvent(
 {
 	bool eventHandled(false);
 
-	// Fill in with event handling code...
+	if (action == GLFW_PRESS)
+	{
+		if (key == GLFW_KEY_O)
+		{
+			current_change = ROTATE_VIEW;
+		}
+		if (key == GLFW_KEY_E)
+		{
+			current_change = TRANSLATE_VIEW;
+		}
+		if (key == GLFW_KEY_P)
+		{
+			current_change = PERSPECTIVE;
+		}
+		if (key == GLFW_KEY_R)
+		{
+			current_change = ROTATE_MODEL;
+		}
+		if (key == GLFW_KEY_T)
+		{
+			current_change = TRANSLATE_MODEL;
+		}
+		if (key == GLFW_KEY_S)
+		{
+			current_change = SCALE_MODEL;
+		}
+		if (key == GLFW_KEY_V)
+		{
+			current_change = VIEWPORT;
+		}
+	}
 
 	return eventHandled;
 }
 
-Model::Model()
+Model::Model() : subModel(nullptr)
 {
 	transformation_matrix = glm::mat4(0.25f);
 	transformation_matrix[3][3] = 1.f;
@@ -561,6 +601,10 @@ std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
 
 void Model::translate(glm::vec3 translate_vector)
 {
+	if (subModel)
+	{
+		subModel->translate(translate_vector);
+	}
 	glm::mat4 translation_matrix = glm::mat4(1.f);
 	translation_matrix[3][0] = translate_vector.x;
 	translation_matrix[3][1] = translate_vector.y;
@@ -568,8 +612,62 @@ void Model::translate(glm::vec3 translate_vector)
 	transform(translation_matrix);
 }
 
-void Model::scale(glm::vec3 scale_vector)
+void Model::rotate(glm::vec3 angles)
 {
+
+	if (subModel)
+	{
+		subModel->rotate(angles);
+	}
+
+	glm::mat4 rotationX = glm::mat4(1.f);
+	rotationX[1][1] = cosf(angles.x);
+	rotationX[1][2] = sinf(angles.x);
+	rotationX[2][1] = -sinf(angles.x);
+	rotationX[2][2] = cosf(angles.x);
+	glm::mat4 rotationY = glm::mat4(1.f);
+	rotationY[0][0] = cosf(angles.y);
+	rotationY[2][0] = sinf(angles.y);
+	rotationY[0][2] = -sinf(angles.y);
+	rotationY[2][2] = cosf(angles.y);
+	glm::mat4 rotationZ = glm::mat4(1.f);
+	rotationZ[0][0] = cosf(angles.z);
+	rotationZ[0][1] = sinf(angles.z);
+	rotationZ[1][0] = -sinf(angles.z);
+	rotationZ[1][1] = cosf(angles.z);
+
+	transform(rotationX * rotationY * rotationZ);
+}
+
+std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
+{
+	if (subModel)
+	{
+		return subModel->applyMatrix(matrix);
+	}
+}
+
+void Cube::scale(glm::vec3 scale_vector)
+{
+	scale_vector.x = std::max(scale_vector.x, 0.01f);
+	scale_vector.y = std::max(scale_vector.y, 0.01f);
+	scale_vector.z = std::max(scale_vector.z, 0.01f);
+	if (scale_amount.x < 0.01)
+	{
+		scale_vector.x = std::max(1.f, scale_vector.x);
+	}
+	if (scale_amount.y < 0.01)
+	{
+		scale_vector.y = std::max(1.f, scale_vector.y);
+	}
+	if (scale_amount.z < 0.01)
+	{
+		scale_vector.z = std::max(1.f, scale_vector.z);
+	}
+	scale_amount.x *= scale_vector.x;
+	scale_amount.y *= scale_vector.y;
+	scale_amount.z *= scale_vector.z;
+
 	glm::mat4 scale_matrix = glm::mat4(1.f);
 	scale_matrix[0][0] = scale_vector.x;
 	scale_matrix[1][1] = scale_vector.y;
@@ -578,8 +676,9 @@ void Model::scale(glm::vec3 scale_vector)
 	transform(scale_matrix);
 }
 
-Cube::Cube() : Model()
+Cube::Cube() : Model(), scale_amount({1, 1, 1})
 {
+	this->subModel = new Gnomon();
 	this->vertices = {
 		{-1.f, -1.f, -1.f, 1.f},
 		{-1.f, 1.f, -1.f, 1.f},
@@ -593,5 +692,20 @@ Cube::Cube() : Model()
 }
 
 Cube::~Cube()
+{
+	delete this->subModel;
+}
+
+Gnomon::Gnomon()
+{
+	this->vertices = {
+		{0.f, 0.f, 0.f, 1.f},
+		{1.f, 0.f, 0.f, 1.f},
+		{0.f, 1.f, 0.f, 1.f},
+		{0.f, 0.f, 1.f, 1.f},
+	};
+}
+
+Gnomon::~Gnomon()
 {
 }

@@ -36,12 +36,13 @@ public:
 	void transform(glm::mat4 transform_by_matrix);
 	std::vector<glm::vec4> applyMatrix(glm::mat4 matrix);
 	void translate(glm::vec3 translate_vector);
-	void rotate(float angle, glm::vec3 axis);
-	void scale(glm::vec3 scale_vector);
+	void rotate(glm::vec3 angles);
+	std::vector<glm::vec4> applyMatrixSubModel(glm::mat4 matrix);
 
 protected:
 	glm::mat4 transformation_matrix;
 	std::vector<glm::vec4> vertices;
+	Model *subModel;
 };
 
 class Gnomon : public Model
@@ -56,6 +57,10 @@ class Cube : public Model
 public:
 	Cube();
 	virtual ~Cube();
+	void scale(glm::vec3 scale_vector);
+
+private:
+	glm::vec3 scale_amount;
 };
 
 class A2 : public CS488Window
