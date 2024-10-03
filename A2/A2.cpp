@@ -76,7 +76,7 @@ void A2::initScene()
 
 	auto view_matrix_mat = glm::mat4();
 	glm::vec3 forwardVector = glm::vec3();
-	glm::vec3 positionOfCamera = {0, 0, 2};
+	glm::vec3 positionOfCamera = {0, 0, 4};
 	glm::vec3 positionOfTarget = {0, 0, 0};
 	forwardVector = -glm::normalize(positionOfCamera - positionOfTarget);
 
@@ -104,11 +104,11 @@ void A2::initScene()
 	projection_matrix[0][0] = scaling_factor;
 	projection_matrix[1][1] = scaling_factor;
 
-	projection_matrix[2][2] = -(far + near / (far - near));
-	projection_matrix[2][3] = -1.f;
-	projection_matrix[3][3] = 0;
+	projection_matrix[2][2] = (far + near / (far - near));
+	projection_matrix[2][3] = 1.f;
+	projection_matrix[3][3] = 0.f;
 
-	projection_matrix[3][2] = -(2 * far * near / (far - near));
+	projection_matrix[3][2] = -(2.f * far * near / (far - near));
 }
 
 //----------------------------------------------------------------------------------------
@@ -249,19 +249,11 @@ void A2::appLogic()
 	drawLine(vec2(0.5f, 0.5f), vec2(-0.5f, 0.5f));
 	drawLine(vec2(-0.5f, 0.5f), vec2(-0.5f, -0.5f));
 
-	// Draw inner square:
-	// setLineColour(vec3(0.2f, 1.0f, 1.0f));
-	// drawLine(vec2(-0.25f, -0.25f), vec2(0.25f, -0.25f));
-	// drawLine(vec2(0.25f, -0.25f), vec2(0.25f, 0.25f));
-	// drawLine(vec2(0.25f, 0.25f), vec2(-0.25f, 0.25f));
-	// drawLine(vec2(-0.25f, 0.25f), vec2(-0.25f, -0.25f));
-
 	setLineColour(vec3(1.0f, 1.f, 1.f));
 
 	auto verts = clip_cube();
 	for (auto &vert : verts)
 	{
-		std::cout << vert[1] << std::endl;
 		vert[0] = projection_matrix * vert[0];
 		vert[0] /= vert[0].w;
 		vert[1] = projection_matrix * vert[1];
@@ -269,27 +261,6 @@ void A2::appLogic()
 
 		drawLine({vert[0].x, vert[0].y}, {vert[1].x, vert[1].y});
 	}
-
-	// setLineColour(vec3(0.0f, 1.0f, 1.0f)); // cyan
-	// drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[3].x, verts[3].y));
-	// drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[2].x, verts[2].y));
-	// drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[1].x, verts[1].y));
-	// drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[0].x, verts[0].y));
-
-	// setLineColour(vec3(1.0f, 1.0f, 0.0f)); // yellow
-	// drawLine(vec2(verts[4].x, verts[4].y), vec2(verts[5].x, verts[5].y));
-	// drawLine(vec2(verts[5].x, verts[5].y), vec2(verts[6].x, verts[6].y));
-	// drawLine(vec2(verts[6].x, verts[6].y), vec2(verts[7].x, verts[7].y));
-	// drawLine(vec2(verts[7].x, verts[7].y), vec2(verts[4].x, verts[4].y));
-
-	// setLineColour(vec3(1.0f, 0.0f, 1.0f)); // magenta
-	// drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[4].x, verts[4].y));
-	// setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
-	// drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[5].x, verts[5].y));
-	// setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
-	// drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[7].x, verts[7].y));
-	// setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
-	// drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[6].x, verts[6].y));
 
 	auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
 	auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
@@ -648,12 +619,12 @@ std::vector<std::vector<glm::vec4>> A2::clip_cube()
 			}
 			else
 			{
-				float ratio = far / further.z;
-				further *= ratio;
-				further.w = 1;
-				std::cout << "Special Case: SPECIAL CASE TOO FAR" << std::endl;
-				std::cout << closer << further << std::endl
-						  << "----------" << std::endl;
+				float ratio = (far - closer.z) / (further.z - closer.z);
+				further = closer + (further - closer) * ratio;
+				// further.w = 1;
+				// std::cout << "Special Case: SPECIAL CASE TOO FAR" << std::endl;
+				// std::cout << closer << further << std::endl
+				// 		  << "----------" << std::endl;
 				single_line.push_back(further);
 			}
 		}
@@ -661,12 +632,14 @@ std::vector<std::vector<glm::vec4>> A2::clip_cube()
 		{
 			add_line = true;
 			single_line.push_back(further);
-			float ratio = near / closer.z;
-			closer *= ratio;
-			closer.w = 1;
-			std::cout << "Special Case TOO CLOSE:" << std::endl;
-			std::cout << closer << further << std::endl
-					  << "----------" << std::endl;
+			float ratio = (further.z - near) / (further.z - closer.z);
+			closer = further - (further - closer) * ratio;
+			// float ratio = near / closer.z;
+			// closer *= ratio;
+			// closer.w = 1;
+			// std::cout << "Special Case TOO CLOSE:" << std::endl;
+			// std::cout << closer << further << std::endl
+			// 		  << "----------" << std::endl;
 			single_line.push_back(closer);
 		}
 		if (add_line)
@@ -772,6 +745,7 @@ void Model::reset(glm::mat4 with)
 {
 	translation_matrix = with;
 	scaling_matrix = glm::mat4(1.f);
+	rotation_matrix = glm::mat4(1.f);
 	if (subModel)
 	{
 		subModel->reset(with);
