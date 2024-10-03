@@ -62,6 +62,7 @@ public:
 	ViewMatrix(glm::mat4 initial_matrix);
 	~ViewMatrix();
 	glm::mat4 getTransform();
+	glm::vec4 apply(glm::vec4 input);
 };
 
 class Cube : public Model
@@ -133,6 +134,15 @@ protected:
 	glm::vec2 mouse_position;
 	Gnomon worldGnomon;
 
+	glm::vec2 viewing_top_left;
+	glm::vec2 viewing_bottom_right;
+
+	glm::vec2 window_top_left;
+	glm::vec2 window_bottom_right;
+
+	std::vector<std::pair<glm::vec2, glm::vec2>> edges;
+	float app_width;
+	float app_height;
 	float fov;
 	float far;
 	float near;

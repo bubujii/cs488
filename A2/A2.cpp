@@ -34,7 +34,7 @@ VertexData::VertexData()
 //----------------------------------------------------------------------------------------
 // Constructor
 A2::A2()
-	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix(), far(4), near(2), fov(30)
+	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix(), far(4), near(0.5), fov(30)
 {
 }
 
@@ -68,6 +68,21 @@ void A2::init()
 
 void A2::initScene()
 {
+	window_top_left = vec2(-1.f, 1.f);
+	window_bottom_right = vec2(1.f, -1.f);
+	viewing_top_left = vec2(-0.95f, 0.95f);
+	viewing_bottom_right = vec2(0.95f, -0.95f);
+
+	fov = 30.f;
+	far = 4.f;
+	near = 0.5f;
+
+	edges = {
+		{vec2(-1.f, 0.f), vec2(1.f, 0.f)},
+		{vec2(0.f, -1.f), vec2(0.f, 1.f)},
+		{vec2(1.f, 0.f), vec2(-1.f, 0.f)},
+		{vec2(0.f, 1.f), vec2(0.f, -1.f)},
+	};
 
 	glm::mat4 universal_scale = glm::mat4(0.25f);
 	universal_scale[3][3] = 1.f;
@@ -97,18 +112,6 @@ void A2::initScene()
 								 -translationX, -translationY, -translationZ, 1});
 
 	view_matrix.reset(view_matrix_mat);
-
-	projection_matrix = glm::mat4(1.f);
-	float scaling_factor = 1.f / tanf((fov / 2) * (M_PI / 180));
-
-	projection_matrix[0][0] = scaling_factor;
-	projection_matrix[1][1] = scaling_factor;
-
-	projection_matrix[2][2] = (far + near / (far - near));
-	projection_matrix[2][3] = 1.f;
-	projection_matrix[3][3] = 0.f;
-
-	projection_matrix[3][2] = -(2.f * far * near / (far - near));
 }
 
 //----------------------------------------------------------------------------------------
@@ -242,38 +245,97 @@ void A2::appLogic()
 	// Call at the beginning of frame, before drawing lines:
 	initLineData();
 
+	projection_matrix = glm::mat4(1.f);
+	float scaling_factor = 1.f / tanf((fov / 2) * (M_PI / 180));
+
+	projection_matrix[0][0] = scaling_factor;
+	projection_matrix[1][1] = scaling_factor;
+
+	projection_matrix[2][2] = (far + near / (far - near));
+	projection_matrix[2][3] = 1.f;
+	projection_matrix[3][3] = 0.f;
+
+	projection_matrix[3][2] = -(2.f * far * near / (far - near));
+
 	// Draw outer square:
 	setLineColour(vec3(1.0f, 0.7f, 0.8f));
-	drawLine(vec2(-0.5f, -0.5f), vec2(0.5f, -0.5f));
-	drawLine(vec2(0.5f, -0.5f), vec2(0.5f, 0.5f));
-	drawLine(vec2(0.5f, 0.5f), vec2(-0.5f, 0.5f));
-	drawLine(vec2(-0.5f, 0.5f), vec2(-0.5f, -0.5f));
+	auto a = viewing_top_left;
+	auto b = vec2(viewing_bottom_right.x, viewing_top_left.y);
+	auto c = vec2(viewing_top_left.x, viewing_bottom_right.y);
+	auto d = viewing_bottom_right;
+	drawLine(a, b);
+	drawLine(b, d);
+	drawLine(d, c);
+	drawLine(c, a);
 
 	setLineColour(vec3(1.0f, 1.f, 1.f));
 
-	auto verts = clip_cube();
-	for (auto &vert : verts)
+	auto lines = clip_cube();
+	for (auto &line : lines)
 	{
-		vert[0] = projection_matrix * vert[0];
-		vert[0] /= vert[0].w;
-		vert[1] = projection_matrix * vert[1];
-		vert[1] /= vert[1].w;
+		line[0] = projection_matrix * line[0];
+		line[0] /= line[0].w;
+		line[1] = projection_matrix * line[1];
+		line[1] /= line[1].w;
 
-		drawLine({vert[0].x, vert[0].y}, {vert[1].x, vert[1].y});
+		auto start = vec2(line[0].x, line[0].y);
+		auto end = vec2(line[1].x, line[1].y);
+
+		bool draw = true;
+		for (auto edge : edges)
+		{
+			float wecA = glm::dot((start - edge.first), edge.second);
+			float wecB = glm::dot((end - edge.first), edge.second);
+			if (wecA >= 0 && wecB >= 0)
+			{
+				// draw this line
+				continue;
+			}
+			else if (wecA < 0 && wecB < 0)
+			{
+				draw = false;
+				break;
+			}
+			else
+			{
+				float t = wecA / (wecA - wecB);
+				if (wecA < 0)
+				{
+					start += t * (end - start);
+				}
+				else
+				{
+					end = start + t * (end - start);
+				}
+			}
+		}
+
+		if (draw)
+		{
+			float Lv = viewing_bottom_right.x - viewing_top_left.x;
+			float Lw = window_bottom_right.x - window_top_left.x;
+			float Hv = viewing_top_left.y - viewing_bottom_right.y;
+			float Hw = window_top_left.y - window_bottom_right.y;
+			start.x = (Lv / Lw) * (start.x - window_top_left.x) + viewing_top_left.x;
+			end.x = (Lv / Lw) * (end.x - window_top_left.x) + viewing_top_left.x;
+			start.y = (Hv / Hw) * (start.y - window_bottom_right.y) + viewing_bottom_right.y;
+			end.y = (Hv / Hw) * (end.y - window_bottom_right.y) + viewing_bottom_right.y;
+			drawLine({start.x, start.y}, {end.x, end.y});
+		}
 	}
 
-	auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
-	auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
+	// auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
+	// auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
 
-	setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
-	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[1].x, gnomon_cube_points[1].y});
-	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[1].x, gnomon_world_points[1].y});
-	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
-	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[2].x, gnomon_cube_points[2].y});
-	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[2].x, gnomon_world_points[2].y});
-	setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
-	drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[3].x, gnomon_cube_points[3].y});
-	drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[3].x, gnomon_world_points[3].y});
+	// setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
+	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[1].x, gnomon_cube_points[1].y});
+	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[1].x, gnomon_world_points[1].y});
+	// setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
+	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[2].x, gnomon_cube_points[2].y});
+	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[2].x, gnomon_world_points[2].y});
+	// setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
+	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[3].x, gnomon_cube_points[3].y});
+	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[3].x, gnomon_world_points[3].y});
 }
 
 //----------------------------------------------------------------------------------------
@@ -441,11 +503,31 @@ bool A2::mouseMoveEvent(
 				view_matrix.rotate(active_buttons * change);
 				break;
 
+			case PERSPECTIVE:
+				fov = std::max(5.f, std::min(160.f, fov + change * active_buttons.x));
+				change /= 10;
+				near = std::max(0.01f, std::min(near + change * active_buttons.y, far));
+				far = std::max(far + change * active_buttons.z, near);
+				break;
+
+			case VIEWPORT:
+				if (active_buttons.x)
+				{
+					yPos = app_height - yPos;
+					float mouse_flipped = app_height - mouse_position.y;
+					viewing_bottom_right = vec2((std::max(float(xPos), mouse_position.x) / (app_width / 2)) - 1, (std::min(float(yPos), mouse_flipped) / (app_height / 2)) - 1);
+					viewing_top_left = vec2((std::min(float(xPos), mouse_position.x) / (app_width / 2)) - 1, (std::max(float(yPos), mouse_flipped) / (app_height / 2)) - 1);
+
+					xPos = mouse_position.x;
+					yPos = mouse_position.y;
+				}
+
 			default:
 				break;
 			}
 		}
 		mouse_position.x = float(xPos);
+		mouse_position.y = float(yPos);
 	}
 
 	return eventHandled;
@@ -528,6 +610,8 @@ bool A2::windowResizeEvent(
 
 	// Fill in with event handling code...
 	aspect = height / width;
+	app_height = height;
+	app_width = width;
 
 	return eventHandled;
 }
@@ -621,10 +705,6 @@ std::vector<std::vector<glm::vec4>> A2::clip_cube()
 			{
 				float ratio = (far - closer.z) / (further.z - closer.z);
 				further = closer + (further - closer) * ratio;
-				// further.w = 1;
-				// std::cout << "Special Case: SPECIAL CASE TOO FAR" << std::endl;
-				// std::cout << closer << further << std::endl
-				// 		  << "----------" << std::endl;
 				single_line.push_back(further);
 			}
 		}
@@ -634,12 +714,6 @@ std::vector<std::vector<glm::vec4>> A2::clip_cube()
 			single_line.push_back(further);
 			float ratio = (further.z - near) / (further.z - closer.z);
 			closer = further - (further - closer) * ratio;
-			// float ratio = near / closer.z;
-			// closer *= ratio;
-			// closer.w = 1;
-			// std::cout << "Special Case TOO CLOSE:" << std::endl;
-			// std::cout << closer << further << std::endl
-			// 		  << "----------" << std::endl;
 			single_line.push_back(closer);
 		}
 		if (add_line)
@@ -849,4 +923,9 @@ ViewMatrix::~ViewMatrix() {}
 glm::mat4 ViewMatrix::getTransform()
 {
 	return translation_matrix * rotation_matrix * scaling_matrix;
+}
+
+glm::vec4 ViewMatrix::apply(glm::vec4 input)
+{
+	return translation_matrix * rotation_matrix * scaling_matrix * input;
 }
