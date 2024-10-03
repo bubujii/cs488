@@ -37,14 +37,12 @@ public:
 	std::vector<glm::vec4> applyMatrix(glm::mat4 matrix);
 	void translate(glm::vec3 translate_vector);
 	void rotate(glm::vec3 angles);
-	std::vector<glm::vec4> applyMatrixSubModel(glm::mat4 matrix);
 	void reset(glm::mat4 with);
 
 protected:
 	glm::mat4 translation_matrix;
 	glm::mat4 rotation_matrix;
 	std::vector<glm::vec4> vertices;
-	Model *subModel;
 	glm::mat4 scaling_matrix;
 };
 
@@ -53,6 +51,7 @@ class Gnomon : public Model
 public:
 	Gnomon();
 	virtual ~Gnomon();
+	std::vector<std::vector<glm::vec4>> getLines(glm::mat4 matrix);
 };
 
 class ViewMatrix : public Model
@@ -84,7 +83,9 @@ public:
 	virtual ~A2();
 
 protected:
-	std::vector<std::vector<glm::vec4>> clip_cube();
+	std::vector<std::vector<glm::vec4>> clip(std::vector<std::vector<glm::vec4>> lines);
+	void drawShape(std::vector<std::vector<glm::vec4>> lines, std::vector<glm::vec3> colors);
+	void drawGnomon(std::vector<std::vector<glm::vec4>> lines);
 	virtual void init() override;
 	virtual void appLogic() override;
 	virtual void guiLogic() override;
@@ -133,6 +134,7 @@ protected:
 
 	glm::vec2 mouse_position;
 	Gnomon worldGnomon;
+	Gnomon cubeGnomon;
 
 	glm::vec2 viewing_top_left;
 	glm::vec2 viewing_bottom_right;

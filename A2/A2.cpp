@@ -88,10 +88,11 @@ void A2::initScene()
 	universal_scale[3][3] = 1.f;
 	cube.reset(universal_scale);
 	worldGnomon.reset(universal_scale);
+	cubeGnomon.reset(universal_scale);
 
 	auto view_matrix_mat = glm::mat4();
 	glm::vec3 forwardVector = glm::vec3();
-	glm::vec3 positionOfCamera = {0, 0, 4};
+	glm::vec3 positionOfCamera = {0, 0, 2};
 	glm::vec3 positionOfTarget = {0, 0, 0};
 	forwardVector = -glm::normalize(positionOfCamera - positionOfTarget);
 
@@ -270,72 +271,14 @@ void A2::appLogic()
 
 	setLineColour(vec3(1.0f, 1.f, 1.f));
 
-	auto lines = clip_cube();
-	for (auto &line : lines)
-	{
-		line[0] = projection_matrix * line[0];
-		line[0] /= line[0].w;
-		line[1] = projection_matrix * line[1];
-		line[1] /= line[1].w;
-
-		auto start = vec2(line[0].x, line[0].y);
-		auto end = vec2(line[1].x, line[1].y);
-
-		bool draw = true;
-		for (auto edge : edges)
-		{
-			float wecA = glm::dot((start - edge.first), edge.second);
-			float wecB = glm::dot((end - edge.first), edge.second);
-			if (wecA >= 0 && wecB >= 0)
-			{
-				// draw this line
-				continue;
-			}
-			else if (wecA < 0 && wecB < 0)
-			{
-				draw = false;
-				break;
-			}
-			else
-			{
-				float t = wecA / (wecA - wecB);
-				if (wecA < 0)
-				{
-					start += t * (end - start);
-				}
-				else
-				{
-					end = start + t * (end - start);
-				}
-			}
-		}
-
-		if (draw)
-		{
-			float Lv = viewing_bottom_right.x - viewing_top_left.x;
-			float Lw = window_bottom_right.x - window_top_left.x;
-			float Hv = viewing_top_left.y - viewing_bottom_right.y;
-			float Hw = window_top_left.y - window_bottom_right.y;
-			start.x = (Lv / Lw) * (start.x - window_top_left.x) + viewing_top_left.x;
-			end.x = (Lv / Lw) * (end.x - window_top_left.x) + viewing_top_left.x;
-			start.y = (Hv / Hw) * (start.y - window_bottom_right.y) + viewing_bottom_right.y;
-			end.y = (Hv / Hw) * (end.y - window_bottom_right.y) + viewing_bottom_right.y;
-			drawLine({start.x, start.y}, {end.x, end.y});
-		}
-	}
-
-	// auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
-	// auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
-
-	// setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
-	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[1].x, gnomon_cube_points[1].y});
-	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[1].x, gnomon_world_points[1].y});
-	// setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
-	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[2].x, gnomon_cube_points[2].y});
-	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[2].x, gnomon_world_points[2].y});
-	// setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
-	// drawLine({gnomon_cube_points[0].x, gnomon_cube_points[0].y}, {gnomon_cube_points[3].x, gnomon_cube_points[3].y});
-	// drawLine({gnomon_world_points[0].x, gnomon_world_points[0].y}, {gnomon_world_points[3].x, gnomon_world_points[3].y});
+	std::vector<glm::vec3> gnomon_colors = {
+		vec3(1.0f, 0.0f, 0.0f),
+		vec3(0.0f, 1.0f, 0.0f),
+		vec3(0.0f, 0.0f, 1.0f),
+	};
+	drawShape(clip(cube.getLines(view_matrix.getTransform())), {{1.f, 1.f, 1.f}});
+	drawShape(clip(cubeGnomon.getLines(view_matrix.getTransform())), gnomon_colors);
+	drawShape(clip(worldGnomon.getLines(view_matrix.getTransform())), gnomon_colors);
 }
 
 //----------------------------------------------------------------------------------------
@@ -391,6 +334,7 @@ void A2::guiLogic()
 	{
 		glfwSetWindowShouldClose(m_window, GL_TRUE);
 	}
+	ImGui::Text("Near Plane: %.2f, Far Plane: %.2f", near, far);
 
 	ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
 
@@ -483,6 +427,7 @@ bool A2::mouseMoveEvent(
 			{
 			case TRANSLATE_MODEL:
 				cube.translate(active_buttons * change);
+				cubeGnomon.translate(active_buttons * change);
 				break;
 
 			case SCALE_MODEL:
@@ -492,6 +437,7 @@ bool A2::mouseMoveEvent(
 			case ROTATE_MODEL:
 				change /= 15;
 				cube.rotate(active_buttons * change);
+				cubeGnomon.rotate(active_buttons * change);
 				break;
 
 			case TRANSLATE_VIEW:
@@ -665,6 +611,10 @@ bool A2::keyInputEvent(
 		{
 			active_buttons.y = 1.0f;
 		}
+		if (key == GLFW_KEY_Q)
+		{
+			glfwSetWindowShouldClose(m_window, GL_TRUE);
+		}
 	}
 	if (action == GLFW_RELEASE)
 	{
@@ -677,9 +627,8 @@ bool A2::keyInputEvent(
 	return eventHandled;
 }
 
-std::vector<std::vector<glm::vec4>> A2::clip_cube()
+std::vector<std::vector<glm::vec4>> A2::clip(std::vector<std::vector<glm::vec4>> lines)
 {
-	auto lines = cube.getLines(view_matrix.getTransform());
 	std::vector<std::vector<glm::vec4>> ret_lines;
 	for (auto line : lines)
 	{
@@ -724,7 +673,74 @@ std::vector<std::vector<glm::vec4>> A2::clip_cube()
 	return ret_lines;
 }
 
-Model::Model() : subModel(nullptr)
+void A2::drawShape(std::vector<std::vector<glm::vec4>> lines, std::vector<glm::vec3> colors)
+{
+	int color_index = 0;
+	for (auto &line : lines)
+	{
+		line[0] = projection_matrix * line[0];
+		line[0] /= line[0].w;
+		line[1] = projection_matrix * line[1];
+		line[1] /= line[1].w;
+
+		auto start = vec2(line[0].x, line[0].y);
+		auto end = vec2(line[1].x, line[1].y);
+
+		bool draw = true;
+		for (auto edge : edges)
+		{
+			float wecA = glm::dot((start - edge.first), edge.second);
+			float wecB = glm::dot((end - edge.first), edge.second);
+			if (wecA >= 0 && wecB >= 0)
+			{
+				// draw this line
+				continue;
+			}
+			else if (wecA < 0 && wecB < 0)
+			{
+				draw = false;
+				break;
+			}
+			else
+			{
+				float t = wecA / (wecA - wecB);
+				if (wecA < 0)
+				{
+					start += t * (end - start);
+				}
+				else
+				{
+					end = start + t * (end - start);
+				}
+			}
+		}
+
+		if (draw)
+		{
+			float Lv = viewing_bottom_right.x - viewing_top_left.x;
+			float Lw = window_bottom_right.x - window_top_left.x;
+			float Hv = viewing_top_left.y - viewing_bottom_right.y;
+			float Hw = window_top_left.y - window_bottom_right.y;
+			start.x = (Lv / Lw) * (start.x - window_top_left.x) + viewing_top_left.x;
+			end.x = (Lv / Lw) * (end.x - window_top_left.x) + viewing_top_left.x;
+			start.y = (Hv / Hw) * (start.y - window_bottom_right.y) + viewing_bottom_right.y;
+			end.y = (Hv / Hw) * (end.y - window_bottom_right.y) + viewing_bottom_right.y;
+			setLineColour(colors[color_index]);
+
+			drawLine({start.x, start.y}, {end.x, end.y});
+		}
+		if (color_index != colors.size() - 1)
+		{
+			color_index += 1;
+		}
+	}
+}
+
+void A2::drawGnomon(std::vector<std::vector<glm::vec4>> lines)
+{
+}
+
+Model::Model()
 {
 	translation_matrix = glm::mat4(1.f);
 	rotation_matrix = glm::mat4(1.f);
@@ -764,11 +780,6 @@ std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
 
 void Model::translate(glm::vec3 translate_vector)
 {
-	if (subModel)
-	{
-		vec4 something = vec4({translate_vector.x, translate_vector.y, translate_vector.z, 1});
-		subModel->translate({something.x, something.y, something.z});
-	}
 	glm::mat4 translation_matrix_cur = glm::mat4(1.f);
 	translation_matrix_cur[3][0] = translate_vector.x;
 	translation_matrix_cur[3][1] = translate_vector.y;
@@ -778,11 +789,6 @@ void Model::translate(glm::vec3 translate_vector)
 
 void Model::rotate(glm::vec3 angles)
 {
-
-	if (subModel)
-	{
-		subModel->rotate(angles);
-	}
 
 	glm::mat4 rotationX = glm::mat4(1.f);
 	rotationX[1][1] = cosf(angles.x);
@@ -807,23 +813,11 @@ void Model::rotate(glm::vec3 angles)
 	rotation_matrix = rotationZ * rotationY * rotationX * rotation_matrix;
 }
 
-std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
-{
-	if (subModel)
-	{
-		return subModel->applyMatrix(matrix);
-	}
-}
-
 void Model::reset(glm::mat4 with)
 {
 	translation_matrix = with;
 	scaling_matrix = glm::mat4(1.f);
 	rotation_matrix = glm::mat4(1.f);
-	if (subModel)
-	{
-		subModel->reset(with);
-	}
 }
 
 void Cube::scale(glm::vec3 scale_vector)
@@ -878,7 +872,6 @@ std::vector<std::vector<glm::vec4>> Cube::getLines(glm::mat4 matrix)
 
 Cube::Cube() : Model(), scale_amount({1, 1, 1})
 {
-	this->subModel = new Gnomon();
 	this->vertices = {
 		{-1.f, -1.f, -1.f, 1.f},
 		{-1.f, 1.f, -1.f, 1.f},
@@ -893,7 +886,6 @@ Cube::Cube() : Model(), scale_amount({1, 1, 1})
 
 Cube::~Cube()
 {
-	delete this->subModel;
 }
 
 Gnomon::Gnomon()
@@ -908,6 +900,17 @@ Gnomon::Gnomon()
 
 Gnomon::~Gnomon()
 {
+}
+
+std::vector<std::vector<glm::vec4>> Gnomon::getLines(glm::mat4 matrix)
+{
+	auto points = applyMatrix(matrix);
+	std::vector<std::vector<glm::vec4>> lines = {
+		{points[0], points[1]},
+		{points[0], points[2]},
+		{points[0], points[3]},
+	};
+	return lines;
 }
 
 ViewMatrix::ViewMatrix(glm::mat4 initial_matrix)
