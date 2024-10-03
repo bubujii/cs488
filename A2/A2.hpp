@@ -41,6 +41,7 @@ public:
 
 protected:
 	glm::mat4 translation_matrix;
+	glm::mat4 combined_matrix;
 	glm::mat4 rotation_matrix;
 	std::vector<glm::vec4> vertices;
 	glm::mat4 scaling_matrix;
@@ -60,6 +61,8 @@ public:
 	ViewMatrix();
 	ViewMatrix(glm::mat4 initial_matrix);
 	~ViewMatrix();
+	void translate(glm::vec3 translate_vector);
+	void rotate(glm::vec3 angles);
 	glm::mat4 getTransform();
 	glm::vec4 apply(glm::vec4 input);
 };

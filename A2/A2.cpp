@@ -445,7 +445,7 @@ bool A2::mouseMoveEvent(
 				break;
 
 			case ROTATE_VIEW:
-				change /= 5;
+				change /= 15;
 				view_matrix.rotate(active_buttons * change);
 				break;
 
@@ -461,8 +461,8 @@ bool A2::mouseMoveEvent(
 				{
 					yPos = app_height - yPos;
 					float mouse_flipped = app_height - mouse_position.y;
-					viewing_bottom_right = vec2((std::max(float(xPos), mouse_position.x) / (app_width / 2)) - 1, (std::min(float(yPos), mouse_flipped) / (app_height / 2)) - 1);
-					viewing_top_left = vec2((std::min(float(xPos), mouse_position.x) / (app_width / 2)) - 1, (std::max(float(yPos), mouse_flipped) / (app_height / 2)) - 1);
+					viewing_bottom_right = vec2((std::min(std::max(float(xPos), mouse_position.x), app_width) / (app_width / 2)) - 1, (std::max(std::min(float(yPos), mouse_flipped), 0.f) / (app_height / 2)) - 1);
+					viewing_top_left = vec2((std::max(std::min(float(xPos), mouse_position.x), 0.f) / (app_width / 2)) - 1, (std::min(std::max(float(yPos), mouse_flipped), app_height) / (app_height / 2)) - 1);
 
 					xPos = mouse_position.x;
 					yPos = mouse_position.y;
@@ -743,6 +743,7 @@ void A2::drawGnomon(std::vector<std::vector<glm::vec4>> lines)
 Model::Model()
 {
 	translation_matrix = glm::mat4(1.f);
+	combined_matrix = glm::mat4(1.f);
 	rotation_matrix = glm::mat4(1.f);
 	scaling_matrix = glm::mat4(1.f);
 }
@@ -756,14 +757,14 @@ std::vector<glm::vec4> Model::getVertices()
 	std::vector<glm::vec4> ret_vertices;
 	for (auto point : this->vertices)
 	{
-		ret_vertices.push_back(translation_matrix * rotation_matrix * scaling_matrix * point);
+		ret_vertices.push_back(combined_matrix * scaling_matrix * point);
 	}
 	return ret_vertices;
 }
 
 void Model::transform(glm::mat4 transform_by)
 {
-	this->translation_matrix *= transform_by;
+	this->combined_matrix = transform_by * combined_matrix;
 }
 
 std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
@@ -784,7 +785,7 @@ void Model::translate(glm::vec3 translate_vector)
 	translation_matrix_cur[3][0] = translate_vector.x;
 	translation_matrix_cur[3][1] = translate_vector.y;
 	translation_matrix_cur[3][2] = translate_vector.z;
-	translation_matrix *= translation_matrix_cur;
+	combined_matrix = combined_matrix * translation_matrix_cur;
 }
 
 void Model::rotate(glm::vec3 angles)
@@ -806,16 +807,13 @@ void Model::rotate(glm::vec3 angles)
 	rotationZ[1][0] = -sinf(angles.z);
 	rotationZ[1][1] = cosf(angles.z);
 
-	transform(rotationX);
-	transform(rotationY);
-	transform(rotationZ);
-
-	rotation_matrix = rotationZ * rotationY * rotationX * rotation_matrix;
+	combined_matrix = combined_matrix * rotationZ * rotationY * rotationX;
 }
 
 void Model::reset(glm::mat4 with)
 {
-	translation_matrix = with;
+	combined_matrix = with;
+	translation_matrix = glm::mat4(1.f);
 	scaling_matrix = glm::mat4(1.f);
 	rotation_matrix = glm::mat4(1.f);
 }
@@ -915,7 +913,7 @@ std::vector<std::vector<glm::vec4>> Gnomon::getLines(glm::mat4 matrix)
 
 ViewMatrix::ViewMatrix(glm::mat4 initial_matrix)
 {
-	translation_matrix = initial_matrix;
+	combined_matrix = initial_matrix;
 }
 ViewMatrix::ViewMatrix()
 {
@@ -923,12 +921,44 @@ ViewMatrix::ViewMatrix()
 
 ViewMatrix::~ViewMatrix() {}
 
+void ViewMatrix::translate(glm::vec3 translate_vector)
+{
+	glm::mat4 translation_matrix_cur = glm::mat4(1.f);
+	translation_matrix_cur[3][0] = translate_vector.x;
+	translation_matrix_cur[3][1] = translate_vector.y;
+	translation_matrix_cur[3][2] = translate_vector.z;
+	combined_matrix = glm::inverse(translation_matrix_cur) * combined_matrix;
+}
+
+void ViewMatrix::rotate(glm::vec3 angles)
+{
+
+	glm::mat4 rotationX = glm::mat4(1.f);
+	rotationX[1][1] = cosf(angles.x);
+	rotationX[1][2] = sinf(angles.x);
+	rotationX[2][1] = -sinf(angles.x);
+	rotationX[2][2] = cosf(angles.x);
+	glm::mat4 rotationY = glm::mat4(1.f);
+	rotationY[0][0] = cosf(angles.y);
+	rotationY[2][0] = sinf(angles.y);
+	rotationY[0][2] = -sinf(angles.y);
+	rotationY[2][2] = cosf(angles.y);
+	glm::mat4 rotationZ = glm::mat4(1.f);
+	rotationZ[0][0] = cosf(angles.z);
+	rotationZ[0][1] = sinf(angles.z);
+	rotationZ[1][0] = -sinf(angles.z);
+	rotationZ[1][1] = cosf(angles.z);
+
+	auto inverse = glm::inverse(rotationZ * rotationY * rotationX);
+	combined_matrix = inverse * combined_matrix;
+}
+
 glm::mat4 ViewMatrix::getTransform()
 {
-	return translation_matrix * rotation_matrix * scaling_matrix;
+	return combined_matrix * scaling_matrix;
 }
 
 glm::vec4 ViewMatrix::apply(glm::vec4 input)
 {
-	return translation_matrix * rotation_matrix * scaling_matrix * input;
+	return combined_matrix * scaling_matrix * input;
 }
