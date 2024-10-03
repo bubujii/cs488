@@ -34,7 +34,7 @@ VertexData::VertexData()
 //----------------------------------------------------------------------------------------
 // Constructor
 A2::A2()
-	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix(), far(1), near(0.1), fov(30)
+	: m_currentLineColour(vec3(0.0f)), cube(), active_buttons({0, 0, 0}), view_matrix(), far(4), near(2), fov(30)
 {
 }
 
@@ -76,9 +76,9 @@ void A2::initScene()
 
 	auto view_matrix_mat = glm::mat4();
 	glm::vec3 forwardVector = glm::vec3();
-	glm::vec3 positionOfCamera = {0, 0, -2};
+	glm::vec3 positionOfCamera = {0, 0, 2};
 	glm::vec3 positionOfTarget = {0, 0, 0};
-	forwardVector = glm::normalize(positionOfCamera - positionOfTarget);
+	forwardVector = -glm::normalize(positionOfCamera - positionOfTarget);
 
 	glm::vec3 rightVector = glm::vec3();
 	glm::vec3 tempUpVector = {0, 1, 0};
@@ -256,28 +256,40 @@ void A2::appLogic()
 	// drawLine(vec2(0.25f, 0.25f), vec2(-0.25f, 0.25f));
 	// drawLine(vec2(-0.25f, 0.25f), vec2(-0.25f, -0.25f));
 
-	auto verts = cube.applyMatrix(projection_matrix * view_matrix.getTransform());
+	setLineColour(vec3(1.0f, 1.f, 1.f));
 
-	setLineColour(vec3(0.0f, 1.0f, 1.0f)); // cyan
-	drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[3].x, verts[3].y));
-	drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[2].x, verts[2].y));
-	drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[1].x, verts[1].y));
-	drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[0].x, verts[0].y));
+	auto verts = clip_cube();
+	for (auto &vert : verts)
+	{
+		std::cout << vert[1] << std::endl;
+		vert[0] = projection_matrix * vert[0];
+		vert[0] /= vert[0].w;
+		vert[1] = projection_matrix * vert[1];
+		vert[1] /= vert[1].w;
 
-	setLineColour(vec3(1.0f, 1.0f, 0.0f)); // yellow
-	drawLine(vec2(verts[4].x, verts[4].y), vec2(verts[5].x, verts[5].y));
-	drawLine(vec2(verts[5].x, verts[5].y), vec2(verts[6].x, verts[6].y));
-	drawLine(vec2(verts[6].x, verts[6].y), vec2(verts[7].x, verts[7].y));
-	drawLine(vec2(verts[7].x, verts[7].y), vec2(verts[4].x, verts[4].y));
+		drawLine({vert[0].x, vert[0].y}, {vert[1].x, vert[1].y});
+	}
 
-	setLineColour(vec3(1.0f, 0.0f, 1.0f)); // magenta
-	drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[4].x, verts[4].y));
-	setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
-	drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[5].x, verts[5].y));
-	setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
-	drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[7].x, verts[7].y));
-	setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
-	drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[6].x, verts[6].y));
+	// setLineColour(vec3(0.0f, 1.0f, 1.0f)); // cyan
+	// drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[3].x, verts[3].y));
+	// drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[2].x, verts[2].y));
+	// drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[1].x, verts[1].y));
+	// drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[0].x, verts[0].y));
+
+	// setLineColour(vec3(1.0f, 1.0f, 0.0f)); // yellow
+	// drawLine(vec2(verts[4].x, verts[4].y), vec2(verts[5].x, verts[5].y));
+	// drawLine(vec2(verts[5].x, verts[5].y), vec2(verts[6].x, verts[6].y));
+	// drawLine(vec2(verts[6].x, verts[6].y), vec2(verts[7].x, verts[7].y));
+	// drawLine(vec2(verts[7].x, verts[7].y), vec2(verts[4].x, verts[4].y));
+
+	// setLineColour(vec3(1.0f, 0.0f, 1.0f)); // magenta
+	// drawLine(vec2(verts[0].x, verts[0].y), vec2(verts[4].x, verts[4].y));
+	// setLineColour(vec3(1.0f, 0.0f, 0.0f)); // red
+	// drawLine(vec2(verts[1].x, verts[1].y), vec2(verts[5].x, verts[5].y));
+	// setLineColour(vec3(0.0f, 0.0f, 1.0f)); // blue
+	// drawLine(vec2(verts[3].x, verts[3].y), vec2(verts[7].x, verts[7].y));
+	// setLineColour(vec3(0.0f, 1.0f, 0.0f)); // green
+	// drawLine(vec2(verts[2].x, verts[2].y), vec2(verts[6].x, verts[6].y));
 
 	auto gnomon_cube_points = cube.applyMatrixSubModel(projection_matrix * view_matrix.getTransform());
 	auto gnomon_world_points = worldGnomon.applyMatrix(projection_matrix * view_matrix.getTransform());
@@ -610,9 +622,65 @@ bool A2::keyInputEvent(
 	return eventHandled;
 }
 
+std::vector<std::vector<glm::vec4>> A2::clip_cube()
+{
+	auto lines = cube.getLines(view_matrix.getTransform());
+	std::vector<std::vector<glm::vec4>> ret_lines;
+	for (auto line : lines)
+	{
+		std::vector<glm::vec4> single_line;
+		bool add_line = false;
+		glm::vec4 closer = line[0];
+		glm::vec4 further = line[1];
+		if (line[0].z > line[1].z)
+		{
+			closer = line[1];
+			further = line[0];
+		}
+
+		if (closer.z > near && closer.z < far)
+		{
+			add_line = true;
+			single_line.push_back(closer);
+			if (further.z < far)
+			{
+				single_line.push_back(further);
+			}
+			else
+			{
+				float ratio = far / further.z;
+				further *= ratio;
+				further.w = 1;
+				std::cout << "Special Case: SPECIAL CASE TOO FAR" << std::endl;
+				std::cout << closer << further << std::endl
+						  << "----------" << std::endl;
+				single_line.push_back(further);
+			}
+		}
+		else if (further.z > near && further.z < far)
+		{
+			add_line = true;
+			single_line.push_back(further);
+			float ratio = near / closer.z;
+			closer *= ratio;
+			closer.w = 1;
+			std::cout << "Special Case TOO CLOSE:" << std::endl;
+			std::cout << closer << further << std::endl
+					  << "----------" << std::endl;
+			single_line.push_back(closer);
+		}
+		if (add_line)
+		{
+			ret_lines.push_back(single_line);
+		}
+	}
+	return ret_lines;
+}
+
 Model::Model() : subModel(nullptr)
 {
-	transformation_matrix = glm::mat4(1.f);
+	translation_matrix = glm::mat4(1.f);
+	rotation_matrix = glm::mat4(1.f);
 	scaling_matrix = glm::mat4(1.f);
 }
 
@@ -625,14 +693,14 @@ std::vector<glm::vec4> Model::getVertices()
 	std::vector<glm::vec4> ret_vertices;
 	for (auto point : this->vertices)
 	{
-		ret_vertices.push_back(scaling_matrix * transformation_matrix * point);
+		ret_vertices.push_back(translation_matrix * rotation_matrix * scaling_matrix * point);
 	}
 	return ret_vertices;
 }
 
 void Model::transform(glm::mat4 transform_by)
 {
-	this->transformation_matrix *= transform_by;
+	this->translation_matrix *= transform_by;
 }
 
 std::vector<glm::vec4> Model::applyMatrix(glm::mat4 matrix)
@@ -651,14 +719,14 @@ void Model::translate(glm::vec3 translate_vector)
 {
 	if (subModel)
 	{
-		vec4 something = scaling_matrix * vec4({translate_vector.x, translate_vector.y, translate_vector.z, 1});
+		vec4 something = vec4({translate_vector.x, translate_vector.y, translate_vector.z, 1});
 		subModel->translate({something.x, something.y, something.z});
 	}
-	glm::mat4 translation_matrix = glm::mat4(1.f);
-	translation_matrix[3][0] = translate_vector.x;
-	translation_matrix[3][1] = translate_vector.y;
-	translation_matrix[3][2] = translate_vector.z;
-	transform(translation_matrix);
+	glm::mat4 translation_matrix_cur = glm::mat4(1.f);
+	translation_matrix_cur[3][0] = translate_vector.x;
+	translation_matrix_cur[3][1] = translate_vector.y;
+	translation_matrix_cur[3][2] = translate_vector.z;
+	translation_matrix *= translation_matrix_cur;
 }
 
 void Model::rotate(glm::vec3 angles)
@@ -685,7 +753,11 @@ void Model::rotate(glm::vec3 angles)
 	rotationZ[1][0] = -sinf(angles.z);
 	rotationZ[1][1] = cosf(angles.z);
 
-	transform(rotationX * rotationY * rotationZ);
+	transform(rotationX);
+	transform(rotationY);
+	transform(rotationZ);
+
+	rotation_matrix = rotationZ * rotationY * rotationX * rotation_matrix;
 }
 
 std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
@@ -698,7 +770,7 @@ std::vector<glm::vec4> Model::applyMatrixSubModel(glm::mat4 matrix)
 
 void Model::reset(glm::mat4 with)
 {
-	transformation_matrix = with;
+	translation_matrix = with;
 	scaling_matrix = glm::mat4(1.f);
 	if (subModel)
 	{
@@ -732,8 +804,28 @@ void Cube::scale(glm::vec3 scale_vector)
 	scale_matrix[1][1] = scale_vector.y;
 	scale_matrix[2][2] = scale_vector.z;
 
-	// this->subModel->transform(scale_matrix);
 	scaling_matrix *= scale_matrix;
+}
+
+std::vector<std::vector<glm::vec4>> Cube::getLines(glm::mat4 matrix)
+{
+	auto points = applyMatrix(matrix);
+
+	std::vector<std::vector<glm::vec4>> lines = {
+		{points[0], points[3]},
+		{points[3], points[2]},
+		{points[2], points[1]},
+		{points[1], points[0]},
+		{points[4], points[5]},
+		{points[5], points[6]},
+		{points[6], points[7]},
+		{points[7], points[4]},
+		{points[0], points[4]},
+		{points[1], points[5]},
+		{points[3], points[7]},
+		{points[2], points[6]},
+	};
+	return lines;
 }
 
 Cube::Cube() : Model(), scale_amount({1, 1, 1})
@@ -772,7 +864,7 @@ Gnomon::~Gnomon()
 
 ViewMatrix::ViewMatrix(glm::mat4 initial_matrix)
 {
-	transformation_matrix = initial_matrix;
+	translation_matrix = initial_matrix;
 }
 ViewMatrix::ViewMatrix()
 {
@@ -782,5 +874,5 @@ ViewMatrix::~ViewMatrix() {}
 
 glm::mat4 ViewMatrix::getTransform()
 {
-	return transformation_matrix;
+	return translation_matrix * rotation_matrix * scaling_matrix;
 }

@@ -41,7 +41,8 @@ public:
 	void reset(glm::mat4 with);
 
 protected:
-	glm::mat4 transformation_matrix;
+	glm::mat4 translation_matrix;
+	glm::mat4 rotation_matrix;
 	std::vector<glm::vec4> vertices;
 	Model *subModel;
 	glm::mat4 scaling_matrix;
@@ -69,6 +70,7 @@ public:
 	Cube();
 	virtual ~Cube();
 	void scale(glm::vec3 scale_vector);
+	std::vector<std::vector<glm::vec4>> getLines(glm::mat4 matrix);
 
 private:
 	glm::vec3 scale_amount;
@@ -81,6 +83,7 @@ public:
 	virtual ~A2();
 
 protected:
+	std::vector<std::vector<glm::vec4>> clip_cube();
 	virtual void init() override;
 	virtual void appLogic() override;
 	virtual void guiLogic() override;
