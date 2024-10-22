@@ -21,9 +21,11 @@ static bool show_gui = true;
 
 const size_t CIRCLE_PTS = 48;
 
+static const int POSITION_ORIENTATION = 0;
+static const int JOINTS = 1;
 //----------------------------------------------------------------------------------------
 // Constructor
-A3::A3(const std::string & luaSceneFile)
+A3::A3(const std::string &luaSceneFile)
 	: m_luaSceneFile(luaSceneFile),
 	  m_positionAttribLocation(0),
 	  m_normalAttribLocation(0),
@@ -31,16 +33,18 @@ A3::A3(const std::string & luaSceneFile)
 	  m_vbo_vertexPositions(0),
 	  m_vbo_vertexNormals(0),
 	  m_vao_arcCircle(0),
-	  m_vbo_arcCircle(0)
+	  m_vbo_arcCircle(0),
+	  frontface_culling(true),
+	  backface_culling(true),
+	  circle(false),
+	  z_buffer(true)
 {
-
 }
 
 //----------------------------------------------------------------------------------------
 // Destructor
 A3::~A3()
 {
-
 }
 
 //----------------------------------------------------------------------------------------
@@ -64,12 +68,10 @@ void A3::init()
 	// this list in order to support rendering additional mesh types.  All vertex
 	// positions, and normals will be extracted and stored within the MeshConsolidator
 	// class.
-	unique_ptr<MeshConsolidator> meshConsolidator (new MeshConsolidator{
-			getAssetFilePath("cube.obj"),
-			getAssetFilePath("sphere.obj"),
-			getAssetFilePath("suzanne.obj")
-	});
-
+	unique_ptr<MeshConsolidator> meshConsolidator(new MeshConsolidator{
+		getAssetFilePath("cube.obj"),
+		getAssetFilePath("sphere.obj"),
+		getAssetFilePath("suzanne.obj")});
 
 	// Acquire the BatchInfoMap from the MeshConsolidator.
 	meshConsolidator->getBatchInfoMap(m_batchInfoMap);
@@ -85,7 +87,6 @@ void A3::init()
 
 	initLightSources();
 
-
 	// Exiting the current scope calls delete automatically on meshConsolidator freeing
 	// all vertex data resources.  This is fine since we already copied this data to
 	// VBOs on the GPU.  We have no use for storing vertex data on the CPU side beyond
@@ -93,7 +94,8 @@ void A3::init()
 }
 
 //----------------------------------------------------------------------------------------
-void A3::processLuaSceneFile(const std::string & filename) {
+void A3::processLuaSceneFile(const std::string &filename)
+{
 	// This version of the code treats the Lua file as an Asset,
 	// so that you'd launch the program with just the filename
 	// of a puppet in the Assets/ directory.
@@ -103,7 +105,8 @@ void A3::processLuaSceneFile(const std::string & filename) {
 	// This version of the code treats the main program argument
 	// as a straightforward pathname.
 	m_rootNode = std::shared_ptr<SceneNode>(import_lua(filename));
-	if (!m_rootNode) {
+	if (!m_rootNode)
+	{
 		std::cerr << "Could Not Open " << filename << std::endl;
 	}
 }
@@ -112,13 +115,13 @@ void A3::processLuaSceneFile(const std::string & filename) {
 void A3::createShaderProgram()
 {
 	m_shader.generateProgramObject();
-	m_shader.attachVertexShader( getAssetFilePath("VertexShader.vs").c_str() );
-	m_shader.attachFragmentShader( getAssetFilePath("FragmentShader.fs").c_str() );
+	m_shader.attachVertexShader(getAssetFilePath("VertexShader.vs").c_str());
+	m_shader.attachFragmentShader(getAssetFilePath("FragmentShader.fs").c_str());
 	m_shader.link();
 
 	m_shader_arcCircle.generateProgramObject();
-	m_shader_arcCircle.attachVertexShader( getAssetFilePath("arc_VertexShader.vs").c_str() );
-	m_shader_arcCircle.attachFragmentShader( getAssetFilePath("arc_FragmentShader.fs").c_str() );
+	m_shader_arcCircle.attachVertexShader(getAssetFilePath("arc_VertexShader.vs").c_str());
+	m_shader_arcCircle.attachFragmentShader(getAssetFilePath("arc_FragmentShader.fs").c_str());
 	m_shader_arcCircle.link();
 }
 
@@ -140,7 +143,6 @@ void A3::enableVertexShaderInputSlots()
 		CHECK_GL_ERRORS;
 	}
 
-
 	//-- Enable input slots for m_vao_arcCircle:
 	{
 		glBindVertexArray(m_vao_arcCircle);
@@ -157,9 +159,9 @@ void A3::enableVertexShaderInputSlots()
 }
 
 //----------------------------------------------------------------------------------------
-void A3::uploadVertexDataToVbos (
-		const MeshConsolidator & meshConsolidator
-) {
+void A3::uploadVertexDataToVbos(
+	const MeshConsolidator &meshConsolidator)
+{
 	// Generate VBO to store all vertex position data
 	{
 		glGenBuffers(1, &m_vbo_vertexPositions);
@@ -167,7 +169,7 @@ void A3::uploadVertexDataToVbos (
 		glBindBuffer(GL_ARRAY_BUFFER, m_vbo_vertexPositions);
 
 		glBufferData(GL_ARRAY_BUFFER, meshConsolidator.getNumVertexPositionBytes(),
-				meshConsolidator.getVertexPositionDataPtr(), GL_STATIC_DRAW);
+					 meshConsolidator.getVertexPositionDataPtr(), GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		CHECK_GL_ERRORS;
@@ -180,7 +182,7 @@ void A3::uploadVertexDataToVbos (
 		glBindBuffer(GL_ARRAY_BUFFER, m_vbo_vertexNormals);
 
 		glBufferData(GL_ARRAY_BUFFER, meshConsolidator.getNumVertexNormalBytes(),
-				meshConsolidator.getVertexNormalDataPtr(), GL_STATIC_DRAW);
+					 meshConsolidator.getVertexNormalDataPtr(), GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		CHECK_GL_ERRORS;
@@ -188,17 +190,18 @@ void A3::uploadVertexDataToVbos (
 
 	// Generate VBO to store the trackball circle.
 	{
-		glGenBuffers( 1, &m_vbo_arcCircle );
-		glBindBuffer( GL_ARRAY_BUFFER, m_vbo_arcCircle );
+		glGenBuffers(1, &m_vbo_arcCircle);
+		glBindBuffer(GL_ARRAY_BUFFER, m_vbo_arcCircle);
 
-		float *pts = new float[ 2 * CIRCLE_PTS ];
-		for( size_t idx = 0; idx < CIRCLE_PTS; ++idx ) {
+		float *pts = new float[2 * CIRCLE_PTS];
+		for (size_t idx = 0; idx < CIRCLE_PTS; ++idx)
+		{
 			float ang = 2.0 * M_PI * float(idx) / CIRCLE_PTS;
-			pts[2*idx] = cos( ang );
-			pts[2*idx+1] = sin( ang );
+			pts[2 * idx] = cos(ang);
+			pts[2 * idx + 1] = sin(ang);
 		}
 
-		glBufferData(GL_ARRAY_BUFFER, 2*CIRCLE_PTS*sizeof(float), pts, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, 2 * CIRCLE_PTS * sizeof(float), pts, GL_STATIC_DRAW);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		CHECK_GL_ERRORS;
@@ -249,29 +252,30 @@ void A3::initPerspectiveMatrix()
 	m_perpsective = glm::perspective(degreesToRadians(60.0f), aspect, 0.1f, 100.0f);
 }
 
-
 //----------------------------------------------------------------------------------------
-void A3::initViewMatrix() {
+void A3::initViewMatrix()
+{
 	m_view = glm::lookAt(vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, -1.0f),
-			vec3(0.0f, 1.0f, 0.0f));
+						 vec3(0.0f, 1.0f, 0.0f));
 }
 
 //----------------------------------------------------------------------------------------
-void A3::initLightSources() {
+void A3::initLightSources()
+{
 	// World-space position
 	m_light.position = vec3(10.0f, 10.0f, 10.0f);
 	m_light.rgbIntensity = vec3(0.0f); // light
 }
 
 //----------------------------------------------------------------------------------------
-void A3::uploadCommonSceneUniforms() {
+void A3::uploadCommonSceneUniforms()
+{
 	m_shader.enable();
 	{
 		//-- Set Perpsective matrix uniform for the scene:
 		GLint location = m_shader.getUniformLocation("Perspective");
 		glUniformMatrix4fv(location, 1, GL_FALSE, value_ptr(m_perpsective));
 		CHECK_GL_ERRORS;
-
 
 		//-- Set LightSource uniform for the scene:
 		{
@@ -310,33 +314,87 @@ void A3::appLogic()
  */
 void A3::guiLogic()
 {
-	if( !show_gui ) {
+	if (!show_gui)
+	{
 		return;
 	}
 
 	static bool firstRun(true);
-	if (firstRun) {
+	if (firstRun)
+	{
 		ImGui::SetNextWindowPos(ImVec2(50, 50));
 		firstRun = false;
 	}
 
 	static bool showDebugWindow(true);
-	ImGuiWindowFlags windowFlags(ImGuiWindowFlags_AlwaysAutoResize);
+	ImGuiWindowFlags windowFlags(ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_MenuBar);
 	float opacity(0.5f);
 
-	ImGui::Begin("Properties", &showDebugWindow, ImVec2(100,100), opacity,
-			windowFlags);
+	ImGui::Begin("Properties", &showDebugWindow, ImVec2(100, 100), opacity,
+				 windowFlags);
+	if (ImGui::RadioButton("Position/Orientation (P)", &interaction_mode, POSITION_ORIENTATION))
+	{
+	}
+	if (ImGui::RadioButton("Joints (J)", &interaction_mode, JOINTS))
+	{
+	}
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("Application"))
+		{
+			if (ImGui::Button("Reset Position (I)"))
+			{
+			}
+			if (ImGui::Button("Reset Orientation (O)"))
+			{
+			}
+			if (ImGui::Button("Reset Joints (S)"))
+			{
+			}
+			if (ImGui::Button("Reset All (A)"))
+			{
+			}
+			if (ImGui::Button("Quit Application (Q)"))
+			{
+				glfwSetWindowShouldClose(m_window, GL_TRUE);
+			}
 
-
-		// Add more gui elements here here ...
-
-
-		// Create Button, and check if it was clicked:
-		if( ImGui::Button( "Quit Application" ) ) {
-			glfwSetWindowShouldClose(m_window, GL_TRUE);
+			ImGui::EndMenu();
 		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::Button("Undo (U)"))
+			{
+			}
+			if (ImGui::Button("Redo (R)"))
+			{
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Options"))
+		{
+			if (ImGui::Checkbox("Circle (C)", &circle))
+			{
+			}
+			if (ImGui::Checkbox("Frontface Culling (F)", &frontface_culling))
+			{
+			}
+			if (ImGui::Checkbox("Backface Culling (B)", &backface_culling))
+			{
+			}
+			if (ImGui::Checkbox("Z-Buffer (Z)", &z_buffer))
+			{
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
 
-		ImGui::Text( "Framerate: %.1f FPS", ImGui::GetIO().Framerate );
+	// Add more gui elements here here ...
+
+	// Create Button, and check if it was clicked:
+
+	ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
 
 	ImGui::End();
 }
@@ -344,10 +402,10 @@ void A3::guiLogic()
 //----------------------------------------------------------------------------------------
 // Update mesh specific shader uniforms:
 static void updateShaderUniforms(
-		const ShaderProgram & shader,
-		const GeometryNode & node,
-		const glm::mat4 & viewMatrix
-) {
+	const ShaderProgram &shader,
+	const GeometryNode &node,
+	const glm::mat4 &viewMatrix)
+{
 
 	shader.enable();
 	{
@@ -363,7 +421,6 @@ static void updateShaderUniforms(
 		glUniformMatrix3fv(location, 1, GL_FALSE, value_ptr(normalMatrix));
 		CHECK_GL_ERRORS;
 
-
 		//-- Set Material values:
 		location = shader.getUniformLocation("material.kd");
 		vec3 kd = node.material.kd;
@@ -371,25 +428,55 @@ static void updateShaderUniforms(
 		CHECK_GL_ERRORS;
 	}
 	shader.disable();
-
 }
 
 //----------------------------------------------------------------------------------------
 /*
  * Called once per frame, after guiLogic().
  */
-void A3::draw() {
+void A3::draw()
+{
+	if (z_buffer)
+	{
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+	}
+	else
+	{
+		glDisable(GL_DEPTH_TEST);
+	}
+	if (backface_culling && frontface_culling)
+	{
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT_AND_BACK);
+	}
+	else if (backface_culling)
+	{
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_BACK);
+	}
+	else if (frontface_culling)
+	{
+		glEnable(GL_CULL_FACE);
+		glCullFace(GL_FRONT);
+	}
 
-	glEnable( GL_DEPTH_TEST );
 	renderSceneGraph(*m_rootNode);
-
-
-	glDisable( GL_DEPTH_TEST );
 	renderArcCircle();
+
+	if (backface_culling || frontface_culling)
+	{
+		glDisable(GL_CULL_FACE);
+	}
+	if (z_buffer)
+	{
+		glDisable(GL_DEPTH_TEST);
+	}
 }
 
 //----------------------------------------------------------------------------------------
-void A3::renderSceneGraph(const SceneNode & root) {
+void A3::renderSceneGraph(const SceneNode &root)
+{
 
 	// Bind the VAO once here, and reuse for all GeometryNode rendering below.
 	glBindVertexArray(m_vao_meshData);
@@ -407,15 +494,15 @@ void A3::renderSceneGraph(const SceneNode & root) {
 	// could put a set of mutually recursive functions in this class, which
 	// walk down the tree from nodes of different types.
 
-	for (const SceneNode * node : root.children) {
+	for (const SceneNode *node : root.children)
+	{
 
 		if (node->m_nodeType != NodeType::GeometryNode)
 			continue;
 
-		const GeometryNode * geometryNode = static_cast<const GeometryNode *>(node);
+		const GeometryNode *geometryNode = static_cast<const GeometryNode *>(node);
 
 		updateShaderUniforms(m_shader, *geometryNode, m_view);
-
 
 		// Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
 		BatchInfo batchInfo = m_batchInfoMap[geometryNode->meshId];
@@ -432,20 +519,24 @@ void A3::renderSceneGraph(const SceneNode & root) {
 
 //----------------------------------------------------------------------------------------
 // Draw the trackball circle.
-void A3::renderArcCircle() {
+void A3::renderArcCircle()
+{
 	glBindVertexArray(m_vao_arcCircle);
 
 	m_shader_arcCircle.enable();
-		GLint m_location = m_shader_arcCircle.getUniformLocation( "M" );
-		float aspect = float(m_framebufferWidth)/float(m_framebufferHeight);
-		glm::mat4 M;
-		if( aspect > 1.0 ) {
-			M = glm::scale( glm::mat4(), glm::vec3( 0.5/aspect, 0.5, 1.0 ) );
-		} else {
-			M = glm::scale( glm::mat4(), glm::vec3( 0.5, 0.5*aspect, 1.0 ) );
-		}
-		glUniformMatrix4fv( m_location, 1, GL_FALSE, value_ptr( M ) );
-		glDrawArrays( GL_LINE_LOOP, 0, CIRCLE_PTS );
+	GLint m_location = m_shader_arcCircle.getUniformLocation("M");
+	float aspect = float(m_framebufferWidth) / float(m_framebufferHeight);
+	glm::mat4 M;
+	if (aspect > 1.0)
+	{
+		M = glm::scale(glm::mat4(), glm::vec3(0.5 / aspect, 0.5, 1.0));
+	}
+	else
+	{
+		M = glm::scale(glm::mat4(), glm::vec3(0.5, 0.5 * aspect, 1.0));
+	}
+	glUniformMatrix4fv(m_location, 1, GL_FALSE, value_ptr(M));
+	glDrawArrays(GL_LINE_LOOP, 0, CIRCLE_PTS);
 	m_shader_arcCircle.disable();
 
 	glBindVertexArray(0);
@@ -458,16 +549,15 @@ void A3::renderArcCircle() {
  */
 void A3::cleanup()
 {
-
 }
 
 //----------------------------------------------------------------------------------------
 /*
  * Event handler.  Handles cursor entering the window area events.
  */
-bool A3::cursorEnterWindowEvent (
-		int entered
-) {
+bool A3::cursorEnterWindowEvent(
+	int entered)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -479,10 +569,10 @@ bool A3::cursorEnterWindowEvent (
 /*
  * Event handler.  Handles mouse cursor movement events.
  */
-bool A3::mouseMoveEvent (
-		double xPos,
-		double yPos
-) {
+bool A3::mouseMoveEvent(
+	double xPos,
+	double yPos)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -494,11 +584,11 @@ bool A3::mouseMoveEvent (
 /*
  * Event handler.  Handles mouse button events.
  */
-bool A3::mouseButtonInputEvent (
-		int button,
-		int actions,
-		int mods
-) {
+bool A3::mouseButtonInputEvent(
+	int button,
+	int actions,
+	int mods)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -510,10 +600,10 @@ bool A3::mouseButtonInputEvent (
 /*
  * Event handler.  Handles mouse scroll wheel events.
  */
-bool A3::mouseScrollEvent (
-		double xOffSet,
-		double yOffSet
-) {
+bool A3::mouseScrollEvent(
+	double xOffSet,
+	double yOffSet)
+{
 	bool eventHandled(false);
 
 	// Fill in with event handling code...
@@ -525,10 +615,10 @@ bool A3::mouseScrollEvent (
 /*
  * Event handler.  Handles window resize events.
  */
-bool A3::windowResizeEvent (
-		int width,
-		int height
-) {
+bool A3::windowResizeEvent(
+	int width,
+	int height)
+{
 	bool eventHandled(false);
 	initPerspectiveMatrix();
 	return eventHandled;
@@ -538,16 +628,33 @@ bool A3::windowResizeEvent (
 /*
  * Event handler.  Handles key input events.
  */
-bool A3::keyInputEvent (
-		int key,
-		int action,
-		int mods
-) {
+bool A3::keyInputEvent(
+	int key,
+	int action,
+	int mods)
+{
 	bool eventHandled(false);
 
-	if( action == GLFW_PRESS ) {
-		if( key == GLFW_KEY_M ) {
+	if (action == GLFW_PRESS)
+	{
+		if (key == GLFW_KEY_M)
+		{
 			show_gui = !show_gui;
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_Z)
+		{
+			z_buffer = !z_buffer;
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_B)
+		{
+			backface_culling = !backface_culling;
+			eventHandled = true;
+		}
+		if (key == GLFW_KEY_F)
+		{
+			frontface_culling = !frontface_culling;
 			eventHandled = true;
 		}
 	}

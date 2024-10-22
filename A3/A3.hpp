@@ -12,15 +12,16 @@
 #include <glm/glm.hpp>
 #include <memory>
 
-struct LightSource {
+struct LightSource
+{
 	glm::vec3 position;
 	glm::vec3 rgbIntensity;
 };
 
-
-class A3 : public CS488Window {
+class A3 : public CS488Window
+{
 public:
-	A3(const std::string & luaSceneFile);
+	A3(const std::string &luaSceneFile);
 	virtual ~A3();
 
 protected:
@@ -39,10 +40,10 @@ protected:
 	virtual bool keyInputEvent(int key, int action, int mods) override;
 
 	//-- One time initialization methods:
-	void processLuaSceneFile(const std::string & filename);
+	void processLuaSceneFile(const std::string &filename);
 	void createShaderProgram();
 	void enableVertexShaderInputSlots();
-	void uploadVertexDataToVbos(const MeshConsolidator & meshConsolidator);
+	void uploadVertexDataToVbos(const MeshConsolidator &meshConsolidator);
 	void mapVboDataToVertexShaderInputLocations();
 	void initViewMatrix();
 	void initLightSources();
@@ -79,4 +80,9 @@ protected:
 	std::string m_luaSceneFile;
 
 	std::shared_ptr<SceneNode> m_rootNode;
+	bool frontface_culling;
+	bool backface_culling;
+	bool z_buffer;
+	bool circle;
+	int interaction_mode;
 };
