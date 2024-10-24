@@ -51,7 +51,11 @@ protected:
 	void initPerspectiveMatrix();
 	void uploadCommonSceneUniforms();
 	void renderSceneGraph(const SceneNode &node);
+	void renderSceneNode(const SceneNode &node, glm::mat4 transform);
 	void renderArcCircle();
+	void translateModel(float depthChange, glm::vec2 lateralChange);
+	void reset();
+	void selectNode(unsigned int id);
 
 	glm::mat4 m_perpsective;
 	glm::mat4 m_view;
@@ -85,4 +89,14 @@ protected:
 	bool z_buffer;
 	bool circle;
 	int interaction_mode;
+	glm::mat4 scene_translation;
+	glm::mat4 scene_rotation;
+	glm::mat4 scene_scale;
+	float lateral_translation;
+	float depth_translation;
+	glm::vec2 mouse_position;
+	float radius;
+	bool tracking;
+	glm::vec3 starting_trackball;
+	bool do_picking;
 };

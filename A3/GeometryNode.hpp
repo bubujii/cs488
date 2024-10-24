@@ -4,12 +4,12 @@
 
 #include "SceneNode.hpp"
 
-class GeometryNode : public SceneNode {
+class GeometryNode : public SceneNode
+{
 public:
 	GeometryNode(
-		const std::string & meshId,
-		const std::string & name
-	);
+		const std::string &meshId,
+		const std::string &name);
 
 	Material material;
 

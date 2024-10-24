@@ -1,5 +1,5 @@
 #version 330
-
+uniform int picking;
 // Model-Space coordinates
 in vec3 position;
 in vec3 normal;
@@ -42,7 +42,12 @@ vec3 diffuseLighting(vec3 vertPosition, vec3 vertNormal) {
 void main() {
 	vec4 pos4 = vec4(position, 1.0);
 
-	vcolour = diffuseLighting((ModelView * pos4).xyz, normalize(NormalMatrix * normal));
+	
+    if (picking == 1) {
+        vcolour = diffuseLighting((ModelView * pos4).xyz, normalize(NormalMatrix * normal));
+    } else {
+        vcolour = material.kd;
+    }
 	
 	gl_Position = Perspective * ModelView * pos4;
 }
