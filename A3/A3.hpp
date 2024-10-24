@@ -70,7 +70,7 @@ protected:
 	void translateModel(float depthChange, glm::vec2 lateralChange);
 	void reset();
 	void selectNode(unsigned int id);
-	std::vector<State> getStates(SceneNode &root);
+	std::vector<State> getStates(SceneNode &root, bool all_joints, bool head_joint);
 	void setStates(std::vector<State> states);
 	void undo();
 	void redo();

@@ -420,6 +420,7 @@ void A3::guiLogic()
 			{
 				redo();
 			}
+
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Options"))
@@ -445,6 +446,8 @@ void A3::guiLogic()
 
 	// Create Button, and check if it was clicked:
 
+	ImGui::Text("Undos left: %d", undo_stack.size());
+	ImGui::Text("Redos left: %d", redo_stack.size());
 	ImGui::Text("Framerate: %.1f FPS", ImGui::GetIO().Framerate);
 
 	ImGui::End();
@@ -714,7 +717,6 @@ bool A3::mouseMoveEvent(
 	if (interaction_mode == POSITION_ORIENTATION)
 	{
 		translateModel(y_diff * depth_translation, glm::vec2(x_diff, y_diff) * lateral_translation);
-		// std::cout << x_diff << y_diff << std::endl;
 		// Fill in with event handling code...
 
 		mouse_position = glm::vec2(xPos, yPos);
@@ -766,9 +768,12 @@ bool A3::mouseMoveEvent(
 		y_diff *= 5;
 		if ((rotating_joints || rotating_head) && !undo_set)
 		{
-			std::cout << "SETTING UNDO" << std::endl;
-			undo_stack.push_back(getStates(*m_rootNode));
-			redo_stack.clear();
+			auto states = getStates(*m_rootNode, rotating_joints, rotating_head);
+			if (states.size())
+			{
+				undo_stack.push_back(states);
+				redo_stack.clear();
+			}
 			undo_set = true;
 		}
 		handleRotation(*m_rootNode, double(y_diff * lateral_translation), rotating_joints, rotating_head);
@@ -829,13 +834,11 @@ bool A3::mouseButtonInputEvent(
 			}
 			else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
 			{
-				std::cout << "rotating joints" << std::endl;
 				rotating_joints = true;
 				undo_set = false;
 			}
 			else if (button == GLFW_MOUSE_BUTTON_RIGHT)
 			{
-				std::cout << "rotating head" << std::endl;
 				rotating_head = true;
 				undo_set = false;
 			}
@@ -860,7 +863,6 @@ bool A3::mouseButtonInputEvent(
 			lateral_translation = new_val;
 			if (actions == GLFW_RELEASE)
 			{
-				std::cout << "no more head rotate" << std::endl;
 				rotating_head = false;
 				undo_set = true;
 			}
@@ -876,7 +878,6 @@ bool A3::mouseButtonInputEvent(
 			lateral_translation = new_val;
 			if (actions == GLFW_RELEASE)
 			{
-				std::cout << "no more joint rotate" << std::endl;
 				rotating_joints = false;
 				undo_set = true;
 			}
@@ -919,13 +920,13 @@ void A3::selectNode(unsigned int id)
 	selectNodeRecur(*m_rootNode, id);
 }
 
-std::vector<State> A3::getStates(SceneNode &root)
+std::vector<State> A3::getStates(SceneNode &root, bool all_joints, bool head_joint)
 {
 	std::vector<State> states;
 	bool child_selected = false;
 	for (auto child : root.children)
 	{
-		std::vector<State> child_states = getStates(*child);
+		std::vector<State> child_states = getStates(*child, all_joints, head_joint);
 		states.insert(states.end(), child_states.begin(), child_states.end());
 		if (child->isSelected)
 		{
@@ -934,8 +935,11 @@ std::vector<State> A3::getStates(SceneNode &root)
 	}
 	if (root.m_nodeType == NodeType::JointNode && child_selected)
 	{
-		JointNode *jointNode = static_cast<JointNode *>(&root);
-		states.push_back(State(jointNode));
+		if ((all_joints && root.m_name != "neck_joint_upper") || (head_joint && root.m_name == "neck_joint_upper"))
+		{
+			JointNode *jointNode = static_cast<JointNode *>(&root);
+			states.push_back(State(jointNode));
+		}
 	}
 	return states;
 }
@@ -956,7 +960,7 @@ void A3::undo()
 
 	if (undo_stack.size() > 0)
 	{
-		redo_stack.push_back(getStates(*m_rootNode));
+		redo_stack.push_back(getStates(*m_rootNode, true, true));
 		setStates(undo_stack.back());
 		undo_stack.pop_back();
 	}
@@ -966,7 +970,7 @@ void A3::redo()
 {
 	if (redo_stack.size() > 0)
 	{
-		undo_stack.push_back(getStates(*m_rootNode));
+		undo_stack.push_back(getStates(*m_rootNode, true, true));
 		setStates(redo_stack.back());
 		redo_stack.pop_back();
 	}
