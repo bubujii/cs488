@@ -23,6 +23,12 @@ const size_t CIRCLE_PTS = 48;
 
 static const int POSITION_ORIENTATION = 0;
 static const int JOINTS = 1;
+
+State::State(JointNode *node) : node(node), transform(node->get_transform()), x_count(node->x_count), y_count(node->y_count), z_count(node->z_count)
+{
+}
+
+State::~State() {};
 //----------------------------------------------------------------------------------------
 // Constructor
 A3::A3(const std::string &luaSceneFile)
@@ -41,7 +47,9 @@ A3::A3(const std::string &luaSceneFile)
 	  scene_translation(1.f),
 	  scene_rotation(1.f),
 	  scene_scale(1.f),
-	  starting_trackball({-2.f, -2.f, -2.f})
+	  starting_trackball({-2.f, -2.f, -2.f}),
+	  rotating_joints(false),
+	  undo_set(false)
 
 {
 }
@@ -96,6 +104,21 @@ void A3::init()
 	// all vertex data resources.  This is fine since we already copied this data to
 	// VBOs on the GPU.  We have no use for storing vertex data on the CPU side beyond
 	// this point.
+	radius = 0.25f * std::min(m_windowHeight, m_windowWidth);
+}
+
+void set_all_initial(SceneNode &root)
+{
+	if (root.m_nodeType == NodeType::JointNode)
+	{
+		JointNode *cur_node = static_cast<JointNode *>(&root);
+		cur_node->set_initial();
+	}
+
+	for (auto child : root.children)
+	{
+		set_all_initial(*child);
+	}
 }
 
 //----------------------------------------------------------------------------------------
@@ -114,6 +137,7 @@ void A3::processLuaSceneFile(const std::string &filename)
 	{
 		std::cerr << "Could Not Open " << filename << std::endl;
 	}
+	set_all_initial(*m_rootNode);
 }
 
 //----------------------------------------------------------------------------------------
@@ -316,6 +340,20 @@ void A3::appLogic()
 	uploadCommonSceneUniforms();
 }
 
+void reset_orientation(SceneNode &root)
+{
+	if (root.m_nodeType == NodeType::JointNode)
+	{
+		JointNode *cur_node = static_cast<JointNode *>(&root);
+		cur_node->initialize();
+	}
+
+	for (auto child : root.children)
+	{
+		reset_orientation(*child);
+	}
+}
+
 //----------------------------------------------------------------------------------------
 /*
  * Called once per frame, after appLogic(), but before the draw() method.
@@ -352,13 +390,15 @@ void A3::guiLogic()
 		{
 			if (ImGui::Button("Reset Position (I)"))
 			{
-				reset();
+				scene_translation = mat4();
 			}
 			if (ImGui::Button("Reset Orientation (O)"))
 			{
+				scene_rotation = mat4();
 			}
 			if (ImGui::Button("Reset Joints (S)"))
 			{
+				reset_orientation(*m_rootNode);
 			}
 			if (ImGui::Button("Reset All (A)"))
 			{
@@ -374,9 +414,11 @@ void A3::guiLogic()
 		{
 			if (ImGui::Button("Undo (U)"))
 			{
+				undo();
 			}
 			if (ImGui::Button("Redo (R)"))
 			{
+				redo();
 			}
 			ImGui::EndMenu();
 		}
@@ -414,7 +456,8 @@ static void updateShaderUniforms(
 	const ShaderProgram &shader,
 	const GeometryNode &node,
 	const glm::mat4 &viewMatrix,
-	bool do_picking)
+	bool do_picking,
+	int interaction_mode)
 {
 
 	shader.enable();
@@ -426,7 +469,6 @@ static void updateShaderUniforms(
 	{
 		location = shader.getUniformLocation("picking");
 		glUniform1i(location, 0);
-		// std::cout << node << std::endl;
 		float r = float(node.m_nodeId & 0xff) / 255.0f;
 		float g = float((node.m_nodeId >> 8) & 0xff) / 255.0f;
 		float b = float((node.m_nodeId >> 16) & 0xff) / 255.0f;
@@ -452,7 +494,7 @@ static void updateShaderUniforms(
 		//-- Set Material values:
 		location = shader.getUniformLocation("material.kd");
 		vec3 kd = node.material.kd;
-		if (node.parent && node.parent->isSelected)
+		if (node.parent && node.parent->isSelected && interaction_mode == JOINTS)
 		{
 			kd = glm::vec3(1.0, 1.0, 0.0);
 		}
@@ -494,7 +536,10 @@ void A3::draw()
 	}
 
 	renderSceneGraph(*m_rootNode);
-	renderArcCircle();
+	if (circle)
+	{
+		renderArcCircle();
+	}
 
 	if (backface_culling || frontface_culling)
 	{
@@ -544,7 +589,7 @@ void A3::renderSceneNode(const SceneNode &root, mat4 transform)
 
 		const GeometryNode *geometryNode = static_cast<const GeometryNode *>(node);
 
-		updateShaderUniforms(m_shader, *geometryNode, m_view * scene_translation * scene_rotation * scene_scale * transform, do_picking);
+		updateShaderUniforms(m_shader, *geometryNode, m_view * scene_translation * scene_rotation * scene_scale * transform, do_picking, interaction_mode);
 
 		// Get the BatchInfo corresponding to the GeometryNode's unique MeshId.
 		BatchInfo batchInfo = m_batchInfoMap[geometryNode->meshId];
@@ -554,7 +599,6 @@ void A3::renderSceneNode(const SceneNode &root, mat4 transform)
 		glDrawArrays(GL_TRIANGLES, batchInfo.startIndex, batchInfo.numIndices);
 		m_shader.disable();
 	}
-	// std::cout << "END: " << root << std::endl;
 }
 
 //----------------------------------------------------------------------------------------
@@ -575,7 +619,6 @@ void A3::renderArcCircle()
 	{
 		M = glm::scale(glm::mat4(), glm::vec3(0.5, 0.5 * aspect, 1.0));
 	}
-	radius = 0.25f * std::min(m_windowHeight, m_windowWidth);
 	glUniformMatrix4fv(m_location, 1, GL_FALSE, value_ptr(M));
 	glDrawArrays(GL_LINE_LOOP, 0, CIRCLE_PTS);
 	m_shader_arcCircle.disable();
@@ -601,7 +644,6 @@ void A3::reset()
 	backface_culling = false;
 	circle = false;
 	z_buffer = true;
-	scene_translation = mat4();
 	scene_scale = mat4();
 	scene_rotation = mat4();
 	starting_trackball = {-2.f, -1.f, -1.f};
@@ -629,36 +671,29 @@ bool A3::cursorEnterWindowEvent(
 	return eventHandled;
 }
 
-void handleRotation(SceneNode &node, double angle)
+void handleRotation(SceneNode &node, double angle, bool all_joints, bool rotate_head)
 {
 	bool child_selected = false;
 	for (auto child : node.children)
 	{
-		handleRotation(*child, angle);
+		handleRotation(*child, angle, all_joints, rotate_head);
 		child_selected = child_selected || child->isSelected;
 	}
 
 	if (node.m_nodeType == NodeType::JointNode && child_selected)
 	{
-		const JointNode *jointNode = static_cast<const JointNode *>(&node);
+		if ((all_joints && node.m_name != "neck_joint_upper") || (rotate_head && node.m_name == "neck_joint_upper"))
+		{
+			JointNode *jointNode = static_cast<JointNode *>(&node);
 
-		if (angle + jointNode->x_count < jointNode->m_joint_x.max && angle + jointNode->x_count > jointNode->m_joint_x.min)
-		{
-			std::cout << "JOINT: " << jointNode->x_count << std::endl;
-
-			node.rotate('x', angle);
-		}
-		else if (angle + jointNode->y_count < jointNode->m_joint_y.max && angle + jointNode->y_count > jointNode->m_joint_y.min)
-		{
-			node.rotate('y', angle);
-		}
-		else
-		{
-			std::cout << "Don't rotatte!!!!!!" << std::endl;
-		std:
-			cout << *jointNode << std::endl;
-			std::cout << jointNode->m_joint_x.max << jointNode->m_joint_x.min << std::endl;
-			std::cout << jointNode->m_joint_x.max << jointNode->m_joint_x.min << std::endl;
+			if (angle + jointNode->x_count < jointNode->m_joint_x.max && angle + jointNode->x_count > jointNode->m_joint_x.min)
+			{
+				node.rotate('x', angle);
+			}
+			else if (angle + jointNode->y_count < jointNode->m_joint_y.max && angle + jointNode->y_count > jointNode->m_joint_y.min)
+			{
+				node.rotate('y', angle);
+			}
 		}
 	}
 }
@@ -707,8 +742,6 @@ bool A3::mouseMoveEvent(
 					float alpha = 80.f;
 					float theta = alpha * glm::l2Norm(point_projected - starting_trackball);
 					axis = glm::vec3(glm::inverse(scene_rotation) * glm::vec4(axis, 1.f));
-					std::cout << axis << std::endl;
-					std::cout << theta << std::endl;
 					scene_rotation = glm::rotate(scene_rotation, glm::radians(theta), axis);
 					starting_trackball = point_projected;
 				}
@@ -731,7 +764,14 @@ bool A3::mouseMoveEvent(
 	{
 		mouse_position = glm::vec2(xPos, yPos);
 		y_diff *= 5;
-		handleRotation(*m_rootNode, double(y_diff * lateral_translation));
+		if ((rotating_joints || rotating_head) && !undo_set)
+		{
+			std::cout << "SETTING UNDO" << std::endl;
+			undo_stack.push_back(getStates(*m_rootNode));
+			redo_stack.clear();
+			undo_set = true;
+		}
+		handleRotation(*m_rootNode, double(y_diff * lateral_translation), rotating_joints, rotating_head);
 	}
 
 	return eventHandled;
@@ -753,45 +793,61 @@ bool A3::mouseButtonInputEvent(
 		new_val = 1.f;
 		if (interaction_mode == JOINTS)
 		{
-			double xpos, ypos;
-			glfwGetCursorPos(m_window, &xpos, &ypos);
-			do_picking = true;
-			uploadCommonSceneUniforms();
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			if (button == GLFW_MOUSE_BUTTON_LEFT)
+			{
+				double xpos, ypos;
+				glfwGetCursorPos(m_window, &xpos, &ypos);
+				do_picking = true;
+				uploadCommonSceneUniforms();
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			draw();
-			CHECK_GL_ERRORS;
+				draw();
+				CHECK_GL_ERRORS;
 
-			xpos *= double(m_framebufferWidth) / double(m_windowWidth);
-			// WTF, don't know why I have to measure y relative to the bottom of
-			// the window in this case.
-			ypos = m_windowHeight - ypos;
-			ypos *= double(m_framebufferHeight) / double(m_windowHeight);
+				xpos *= double(m_framebufferWidth) / double(m_windowWidth);
+				// WTF, don't know why I have to measure y relative to the bottom of
+				// the window in this case.
+				ypos = m_windowHeight - ypos;
+				ypos *= double(m_framebufferHeight) / double(m_windowHeight);
 
-			GLubyte buffer[4] = {0, 0, 0, 0};
-			// A bit ugly -- don't want to swap the just-drawn false colours
-			// to the screen, so read from the back buffer.
-			glReadBuffer(GL_BACK);
-			// Actually read the pixel at the mouse location.
-			glReadPixels(int(xpos), int(ypos), 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
-			CHECK_GL_ERRORS;
+				GLubyte buffer[4] = {0, 0, 0, 0};
+				// A bit ugly -- don't want to swap the just-drawn false colours
+				// to the screen, so read from the back buffer.
+				glReadBuffer(GL_BACK);
+				// Actually read the pixel at the mouse location.
+				glReadPixels(int(xpos), int(ypos), 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
+				CHECK_GL_ERRORS;
 
-			// Reassemble the object ID.
-			unsigned int what = buffer[0] + (buffer[1] << 8) + (buffer[2] << 16);
+				// Reassemble the object ID.
+				unsigned int what = buffer[0] + (buffer[1] << 8) + (buffer[2] << 16);
 
-			std::cout << "clicked " << what << std::endl;
+				selectNode(what);
 
-			selectNode(what);
+				do_picking = false;
 
-			do_picking = false;
-
-			CHECK_GL_ERRORS;
+				CHECK_GL_ERRORS;
+			}
+			else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+			{
+				std::cout << "rotating joints" << std::endl;
+				rotating_joints = true;
+				undo_set = false;
+			}
+			else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+			{
+				std::cout << "rotating head" << std::endl;
+				rotating_head = true;
+				undo_set = false;
+			}
 		}
 	}
 	switch (button)
 	{
 	case GLFW_MOUSE_BUTTON_LEFT:
-		lateral_translation = new_val;
+		if (interaction_mode == POSITION_ORIENTATION)
+		{
+			lateral_translation = new_val;
+		}
 		break;
 	case GLFW_MOUSE_BUTTON_RIGHT:
 		if (interaction_mode == POSITION_ORIENTATION)
@@ -799,11 +855,31 @@ bool A3::mouseButtonInputEvent(
 			tracking = !tracking;
 			starting_trackball = glm::vec3(-2.f, -1.f, -1.f);
 		}
+		else if (interaction_mode == JOINTS)
+		{
+			lateral_translation = new_val;
+			if (actions == GLFW_RELEASE)
+			{
+				std::cout << "no more head rotate" << std::endl;
+				rotating_head = false;
+				undo_set = true;
+			}
+		}
 		break;
 	case GLFW_MOUSE_BUTTON_MIDDLE:
 		if (interaction_mode == POSITION_ORIENTATION)
 		{
 			depth_translation = new_val;
+		}
+		else if (interaction_mode == JOINTS)
+		{
+			lateral_translation = new_val;
+			if (actions == GLFW_RELEASE)
+			{
+				std::cout << "no more joint rotate" << std::endl;
+				rotating_joints = false;
+				undo_set = true;
+			}
 		}
 	default:
 		break;
@@ -817,7 +893,6 @@ void selectNodeRecur(SceneNode &root, unsigned int id)
 {
 	if (root.m_nodeId == id)
 	{
-		std::cout << root << std::endl;
 		if (root.parent && root.parent->parent)
 		{
 			if (root.parent->parent->m_nodeType == NodeType::JointNode)
@@ -844,10 +919,64 @@ void A3::selectNode(unsigned int id)
 	selectNodeRecur(*m_rootNode, id);
 }
 
+std::vector<State> A3::getStates(SceneNode &root)
+{
+	std::vector<State> states;
+	bool child_selected = false;
+	for (auto child : root.children)
+	{
+		std::vector<State> child_states = getStates(*child);
+		states.insert(states.end(), child_states.begin(), child_states.end());
+		if (child->isSelected)
+		{
+			child_selected = true;
+		}
+	}
+	if (root.m_nodeType == NodeType::JointNode && child_selected)
+	{
+		JointNode *jointNode = static_cast<JointNode *>(&root);
+		states.push_back(State(jointNode));
+	}
+	return states;
+}
+
+void A3::setStates(std::vector<State> states)
+{
+	for (auto state : states)
+	{
+		state.node->set_transform(state.transform);
+		state.node->x_count = state.x_count;
+		state.node->y_count = state.y_count;
+		state.node->z_count = state.z_count;
+	}
+}
+
+void A3::undo()
+{
+
+	if (undo_stack.size() > 0)
+	{
+		redo_stack.push_back(getStates(*m_rootNode));
+		setStates(undo_stack.back());
+		undo_stack.pop_back();
+	}
+}
+
+void A3::redo()
+{
+	if (redo_stack.size() > 0)
+	{
+		undo_stack.push_back(getStates(*m_rootNode));
+		setStates(redo_stack.back());
+		redo_stack.pop_back();
+	}
+}
+
 //----------------------------------------------------------------------------------------
 /*
  * Event handler.  Handles mouse scroll wheel events.
  */
+
 bool A3::mouseScrollEvent(
 	double xOffSet,
 	double yOffSet)
@@ -869,6 +998,7 @@ bool A3::windowResizeEvent(
 {
 	bool eventHandled(false);
 	initPerspectiveMatrix();
+	radius = 0.25f * std::min(height, width);
 	return eventHandled;
 }
 
@@ -907,11 +1037,16 @@ bool A3::keyInputEvent(
 		}
 		if (key == GLFW_KEY_LEFT_SHIFT)
 		{
-			depth_translation = 1.f;
+			mouseButtonInputEvent(GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, 0);
+			// depth_translation = 1.f;
 		}
 		if (key == GLFW_KEY_I)
 		{
-			reset();
+			scene_translation = mat4();
+		}
+		if (key == GLFW_KEY_O)
+		{
+			scene_rotation = mat4();
 		}
 		if (key == GLFW_KEY_J)
 		{
@@ -922,13 +1057,39 @@ bool A3::keyInputEvent(
 			interaction_mode = POSITION_ORIENTATION;
 			eventHandled = true;
 		}
+		if (key == GLFW_KEY_C)
+		{
+			circle = !circle;
+		}
+		if (key == GLFW_KEY_S)
+		{
+			reset_orientation(*m_rootNode);
+			undo_stack.clear();
+			redo_stack.clear();
+		}
+		if (key == GLFW_KEY_U)
+		{
+			undo();
+		}
+		if (key == GLFW_KEY_R)
+		{
+			redo();
+		}
+		if (key == GLFW_KEY_A)
+		{
+			scene_translation = mat4();
+			scene_rotation = mat4();
+			reset_orientation(*m_rootNode);
+			undo_stack.clear();
+			redo_stack.clear();
+		}
 	}
 
 	if (action == GLFW_RELEASE)
 	{
 		if (key == GLFW_KEY_LEFT_SHIFT)
 		{
-			depth_translation = 0.f;
+			mouseButtonInputEvent(GLFW_MOUSE_BUTTON_MIDDLE, GLFW_RELEASE, 0);
 		}
 	}
 	// Fill in with event handling code...

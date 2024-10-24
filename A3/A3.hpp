@@ -9,8 +9,22 @@
 
 #include "SceneNode.hpp"
 
+#include "JointNode.hpp"
+
 #include <glm/glm.hpp>
 #include <memory>
+
+class State
+{
+public:
+	State(JointNode *node);
+	~State();
+	glm::mat4 transform;
+	float x_count;
+	float y_count;
+	float z_count;
+	JointNode *node;
+};
 
 struct LightSource
 {
@@ -56,6 +70,10 @@ protected:
 	void translateModel(float depthChange, glm::vec2 lateralChange);
 	void reset();
 	void selectNode(unsigned int id);
+	std::vector<State> getStates(SceneNode &root);
+	void setStates(std::vector<State> states);
+	void undo();
+	void redo();
 
 	glm::mat4 m_perpsective;
 	glm::mat4 m_view;
@@ -99,4 +117,9 @@ protected:
 	bool tracking;
 	glm::vec3 starting_trackball;
 	bool do_picking;
+	bool rotating_joints;
+	bool rotating_head;
+	bool undo_set;
+	std::vector<std::vector<State>> undo_stack;
+	std::vector<std::vector<State>> redo_stack;
 };

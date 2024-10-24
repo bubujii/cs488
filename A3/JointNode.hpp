@@ -17,6 +17,8 @@ public:
 	float x_count;
 	float y_count;
 	float z_count;
+	void set_initial();
+	void initialize();
 
 	struct JointRange
 	{
@@ -24,4 +26,8 @@ public:
 	};
 
 	JointRange m_joint_x, m_joint_y;
+	glm::mat4 initial;
+	float initial_x_count;
+	float initial_y_count;
+	float initial_z_count;
 };

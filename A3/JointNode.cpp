@@ -67,3 +67,19 @@ void JointNode::rotate(char axis, float angle)
 	mat4 rot_matrix = glm::rotate(degreesToRadians(angle), rot_axis);
 	set_transform(rot_matrix * trans);
 }
+
+void JointNode::set_initial()
+{
+	initial = get_transform();
+	initial_x_count = x_count;
+	initial_y_count = y_count;
+	initial_z_count = z_count;
+}
+
+void JointNode::initialize()
+{
+	set_transform(initial);
+	x_count = initial_x_count;
+	y_count = initial_y_count;
+	z_count = initial_z_count;
+}
