@@ -2,10 +2,11 @@
 
 #pragma once
 
-class Material {
+class Material
+{
 public:
-  virtual ~Material();
+    virtual ~Material();
 
 protected:
-  Material();
+    Material();
 };

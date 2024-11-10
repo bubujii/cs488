@@ -6,13 +6,16 @@
 #include "Primitive.hpp"
 #include "Material.hpp"
 
-class GeometryNode : public SceneNode {
+class GeometryNode : public SceneNode
+{
 public:
-	GeometryNode( const std::string & name, Primitive *prim, 
-		Material *mat = nullptr );
+    GeometryNode(const std::string &name, Primitive *prim,
+                 Material *mat = nullptr);
 
-	void setMaterial( Material *material );
+    Intersection *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
 
-	Material *m_material;
-	Primitive *m_primitive;
+    void setMaterial(Material *material);
+
+    Material *m_material;
+    Primitive *m_primitive;
 };
