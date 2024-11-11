@@ -23,8 +23,6 @@ Cube::~Cube()
 
 std::pair<glm::vec4, glm::vec4> *NonhierSphere::intersect(std::pair<glm::vec4, glm::vec4> ray)
 {
-    ray.first -= glm::vec4(m_pos, 0);
-    ray.second -= glm::vec4(m_pos, 0);
     auto oc = m_pos - glm::vec3(ray.first);
     glm::vec3 direction = glm::normalize(glm::vec3(ray.second) - glm::vec3(ray.first));
     auto a = glm::dot(direction, direction);
@@ -39,7 +37,7 @@ std::pair<glm::vec4, glm::vec4> *NonhierSphere::intersect(std::pair<glm::vec4, g
     auto t2 = c / (a * t1);
     auto intersect_t_val = glm::min(t1, t2);
     // return pair of intersect point and normal
-    glm::vec3 intersect_point = glm::vec3(ray.first + glm::vec4(direction * float(intersect_t_val), 0));
+    glm::vec3 intersect_point = glm::vec3(ray.first + glm::vec4(direction * float(intersect_t_val), 1));
     // std::cout << "----------------" << std::endl;
     // std::cout << glm::to_string(direction) << std::endl;
     // std::cout << glm::to_string(ray.first) << std::endl;
@@ -51,7 +49,7 @@ std::pair<glm::vec4, glm::vec4> *NonhierSphere::intersect(std::pair<glm::vec4, g
     // std::cout << "----------------" << std::endl;
 
     return new std::pair<glm::vec4, glm::vec4>(
-        glm::vec4(intersect_point, 0),
+        glm::vec4(intersect_point, 1),
         glm::vec4(glm::normalize(intersect_point - m_pos), 0));
 }
 

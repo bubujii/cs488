@@ -65,44 +65,58 @@ void A4_Render(
 
             glm::vec3 pixel = pixel00 + (x * pixel_delta_x) + (y * pixel_delta_y);
 
-            std::pair<glm::vec4, glm::vec4> ray = std::make_pair(glm::vec4(eye, 0), glm::vec4(pixel, 0));
+            std::pair<glm::vec4, glm::vec4> ray = std::make_pair(glm::vec4(eye, 1), glm::vec4(pixel, 1));
             // std::cout << glm::to_string(ray.first) << std::endl;
             auto intersect = root->intersect(ray);
-
             if (intersect)
             {
-                glm::vec3 light_color;
+
                 PhongMaterial *mat = (PhongMaterial *)intersect->mat;
-                glm::vec3 normal = glm::normalize(glm::vec3(intersect->normal) + glm::vec3(1));
-                // for (auto light : lights)
-                // {
-                //     auto light_pos = glm::vec4(light->position, 0);
+                glm::vec3 light_color = ambient * mat->m_kd;
+                glm::vec3 normal = glm::normalize(glm::vec3(intersect->normal));
+                // INSERT COLOR CALCULATION HERE
+                for (auto light : lights)
+                {
+                    glm::vec3 light_pos = glm::vec3(light->position);
+                    glm::vec3 light_dir = glm::normalize(light_pos - glm::vec3(intersect->point));
+                    // light_color = normal;
+                    // Shadow check
+                    auto shadow_ray = std::make_pair(intersect->point, glm::vec4(light_pos, 1.0));
+                    auto shadow_intersect = root->intersect(shadow_ray);
+                    if (!shadow_intersect)
+                    { // If there's no intersection, it's not in shadow
 
-                //     if (!root->intersect(std::make_pair(intersect->point, light_pos)))
-                //     {
+                        // Diffuse reflection
+                        double diffuse_intensity = std::max((double)glm::dot(normal, light_dir), 0.0);
+                        glm::vec3 diffuse_term = mat->m_kd * light->colour * diffuse_intensity;
 
-                //         // glm::vec3 light_dir = glm::normalize(glm::vec3(light_pos - intersect->point));
-                //         // glm::vec3 view_dir = glm::normalize(glm::vec3(eye - glm::vec3(intersect->point)));
-                //         // glm::vec3 reflect_dir = glm::normalize(glm::reflect(-light_dir, normal));
+                        // Specular reflection
+                        glm::vec3 view_dir = glm::normalize(eye - glm::vec3(intersect->point));
+                        glm::vec3 reflect_dir = glm::reflect(-light_dir, normal);
+                        double specular_intensity = std::pow(std::max((double)glm::dot(view_dir, reflect_dir), 0.0), mat->m_shininess);
+                        glm::vec3 specular_term = mat->m_ks * light->colour * specular_intensity;
 
-                //         // double diffuse = glm::max(double(glm::dot(normal, light_dir)), 0.0);
-                //         // double specular = glm::pow(glm::max(double(glm::dot(reflect_dir, view_dir)), 0.0), mat->m_shininess);
-
-                //         // glm::vec3 diffuse_term = mat->m_kd * light->colour * diffuse;
-                //         // glm::vec3 specular_term = mat->m_ks * light->colour * specular;
-
-                //         // light_color += diffuse_term + specular_term;
-                //     }
-                // }
+                        // Accumulate color
+                        light_color += diffuse_term + specular_term;
+                    }
+                    // else
+                    // {
+                    //     std::cout << "----------------" << std::endl;
+                    //     std::cout << glm::to_string(shadow_intersect->point) << std::endl;
+                    //     std::cout << glm::to_string(intersect->point) << std::endl;
+                    //     std::cout << glm::to_string(light_pos) << std::endl;
+                    //     std::cout << glm::to_string(light_dir) << std::endl;
+                    //     std::cout << "----------------" << std::endl;
+                    // }
+                }
                 // glm::vec3 ambient_term = mat->m_kd * ambient;
                 // light_color += ambient_term;
-
                 // Red:
-                image(x, y, 0) = double(normal.r);
+                image(x, y, 0) = double(light_color.r);
                 // Green:
-                image(x, y, 1) = double(normal.g);
+                image(x, y, 1) = double(light_color.g);
                 // Blue:
-                image(x, y, 2) = double(normal.b);
+                image(x, y, 2) = double(light_color.b);
 
                 // PhongMaterial *mat = (PhongMaterial *)intersect->mat;
                 // image(x, y, 0) = (double)mat->m_kd.r;
