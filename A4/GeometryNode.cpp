@@ -43,7 +43,7 @@ Intersection *GeometryNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     if (intersect)
     {
         intersect->point = trans * intersect->point;
-        intersect->normal = trans * intersect->normal;
+        intersect->normal = glm::vec4(glm::mat3(glm::transpose(invtrans)) * glm::vec3(intersect->normal), 0.0);
     }
     // std::cout << intersect << std::endl;
     return intersect;

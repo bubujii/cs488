@@ -23,8 +23,6 @@ SceneNode::SceneNode(const std::string &name)
       m_nodeType(NodeType::SceneNode),
       trans(mat4()),
       invtrans(mat4()),
-      scale_mat(mat4()),
-      invscale(mat4()),
       m_nodeId(nodeInstanceCount++)
 {
 }
@@ -110,8 +108,6 @@ void SceneNode::rotate(char axis, float angle)
 void SceneNode::scale(const glm::vec3 &amount)
 {
     set_transform(glm::scale(amount) * trans);
-    scale_mat = scale_mat * glm::scale(amount);
-    invscale = glm::inverse(scale_mat);
 }
 
 //---------------------------------------------------------------------------------------
@@ -179,7 +175,7 @@ Intersection *SceneNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     if (intersect)
     {
         intersect->point = trans * intersect->point;
-        intersect->normal = invscale * intersect->normal;
+        intersect->normal = glm::vec4(glm::mat3(glm::transpose(invtrans)) * glm::vec3(intersect->normal), 0.0);
     }
 
     // std::cout << intersect << std::endl;

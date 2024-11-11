@@ -18,11 +18,6 @@ s3 = gr.nh_sphere('s3', {0, -1200, -500}, 1000)
 scene_root:add_child(s3)
 s3:set_material(mat2)
 
-c1 = gr.nh_box('c1', {-150, -100, -100}, 100)
-scene_root:add_child(c1)
-c1:set_material(mat1)
-
-
 s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
 scene_root:add_child(s4)
 s4:set_material(mat3)

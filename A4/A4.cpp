@@ -1,6 +1,8 @@
 // Termm--Fall 2024
 
 #include <glm/ext.hpp>
+#include <iomanip>
+#include <iostream>
 #include "PhongMaterial.hpp"
 #include "A4.hpp"
 
@@ -49,8 +51,8 @@ void A4_Render(
     double vh = 2 * std::tan(glm::radians(fovy / 2)) * focal_length;
     double vw = vh * (double(w) / h);
 
-    glm::vec3 v_right = glm::vec3(vw, 0.0, 0.0);
-    glm::vec3 v_down = glm::vec3(0.0, -vh, 0.0);
+    glm::vec3 v_right = vw * glm::normalize(glm::cross(view - eye, up));
+    glm::vec3 v_down = vh * glm::normalize(-up);
 
     glm::vec3 pixel_delta_x = v_right / w;
     glm::vec3 pixel_delta_y = v_down / h;
@@ -61,13 +63,12 @@ void A4_Render(
     {
         for (uint x = 0; x < w; ++x)
         {
-            std::clog << "\rProgress: " << (((y * w) + x) / total_pixels) * 100 << "% " << std::flush;
 
             glm::vec3 pixel = pixel00 + (x * pixel_delta_x) + (y * pixel_delta_y);
 
             std::pair<glm::vec4, glm::vec4> ray = std::make_pair(glm::vec4(eye, 1), glm::vec4(pixel, 1));
             // std::cout << glm::to_string(ray.first) << std::endl;
-            auto intersect = root->intersect(ray);
+            auto intersect = root->intersect(std::make_pair(root->invtrans * ray.first, root->invtrans * ray.second));
             if (intersect)
             {
 
@@ -81,7 +82,7 @@ void A4_Render(
                     glm::vec3 light_dir = glm::normalize(light_pos - glm::vec3(intersect->point));
                     // light_color = normal;
                     // Shadow check
-                    auto shadow_ray = std::make_pair(intersect->point, glm::vec4(light_pos, 1.0));
+                    auto shadow_ray = std::make_pair(root->invtrans * intersect->point, root->invtrans * glm::vec4(light_pos, 1.0));
                     auto shadow_intersect = root->intersect(shadow_ray);
                     if (
                         !shadow_intersect || glm::distance(glm::vec3(shadow_intersect->point), light_pos) > glm::distance(glm::vec3(intersect->point), light_pos) || glm::distance(shadow_intersect->point, intersect->point) < 0.0006)
@@ -128,14 +129,27 @@ void A4_Render(
             }
             else
             {
-                // Red:
-                image(x, y, 0) = double(0);
-                // Green:
-                image(x, y, 1) = double(0);
-                // Blue:
-                image(x, y, 2) = double(0);
+                auto probability_of_star = 0.005;
+                if ((double)rand() / RAND_MAX < probability_of_star)
+                {
+                    image(x, y, 0) = double(1);
+                    // Green:
+                    image(x, y, 1) = double(1);
+                    // Blue:
+                    image(x, y, 2) = double(1);
+                }
+                else
+                {
+                    // Red:
+                    image(x, y, 0) = double(0);
+                    // Green:
+                    image(x, y, 1) = double(0);
+                    // Blue:
+                    image(x, y, 2) = double(0);
+                }
             }
         }
+        std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
     }
     std::clog << "\rDone.                      " << std::endl;
 }
