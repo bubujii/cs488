@@ -65,10 +65,15 @@ Mesh::Mesh(const std::string &fname)
 
 std::pair<glm::vec4, glm::vec4> *Mesh::intersect(std::pair<glm::vec4, glm::vec4> ray)
 {
-	if (!bounding_box.intersect(ray))
+	auto bounding_intersect = bounding_box.intersect(ray);
+	if (!bounding_intersect)
 	{
 		return nullptr;
 	}
+#ifdef RENDER_BOUNDING_VOLUMES
+	return bounding_intersect;
+#endif
+	delete bounding_intersect;
 	auto epsilon = 0.000001;
 	auto total_faces = m_faces.size();
 	auto origin = glm::vec3(ray.first);

@@ -150,10 +150,12 @@ std::ostream &operator<<(std::ostream &os, const SceneNode &node)
 
 Intersection *SceneNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
 {
+    ray.first = invtrans * ray.first;
+    ray.second = invtrans * ray.second;
     std::vector<Intersection *> intersections;
     for (auto child : children)
     {
-        intersections.push_back(child->intersect(std::make_pair(child->invtrans * ray.first, child->invtrans * ray.second)));
+        intersections.push_back(child->intersect(ray));
     }
     double closest_distance = DBL_MAX;
     Intersection *intersect = nullptr;
@@ -162,14 +164,18 @@ Intersection *SceneNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     {
         if (!intersection || glm::dot(intersection->point - ray.first, ray.second - ray.first) < 0)
         {
+            delete intersection;
             continue;
         }
         double distance = glm::distance(ray.first, intersection->point);
         if (distance < closest_distance)
         {
-            // std::cout << glm::to_string(*intersection) << std::endl;
             intersect = intersection;
             closest_distance = distance;
+        }
+        else
+        {
+            delete intersection;
         }
     }
     if (intersect)
@@ -178,7 +184,5 @@ Intersection *SceneNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
         intersect->normal = glm::vec4(glm::mat3(glm::transpose(invtrans)) * glm::vec3(intersect->normal), 0.0);
     }
 
-    // std::cout << intersect << std::endl;
-    // test
     return intersect;
 }
