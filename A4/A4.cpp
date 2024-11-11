@@ -83,7 +83,8 @@ void A4_Render(
                     // Shadow check
                     auto shadow_ray = std::make_pair(intersect->point, glm::vec4(light_pos, 1.0));
                     auto shadow_intersect = root->intersect(shadow_ray);
-                    if (!shadow_intersect)
+                    if (
+                        !shadow_intersect || glm::distance(glm::vec3(shadow_intersect->point), light_pos) > glm::distance(glm::vec3(intersect->point), light_pos) || glm::distance(shadow_intersect->point, intersect->point) < 0.0006)
                     { // If there's no intersection, it's not in shadow
 
                         // Diffuse reflection

@@ -16,6 +16,7 @@ public:
 class Sphere : public Primitive
 {
 public:
+    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
     virtual ~Sphere();
 };
 
@@ -47,7 +48,7 @@ public:
         : m_pos(pos), m_size(size)
     {
     }
-    // virtual glm::vec4 *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
     virtual ~NonhierBox();
 
 private:

@@ -21,7 +21,7 @@ Intersection *GeometryNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     }
     for (auto child : children)
     {
-        intersections.push_back(child->intersect(std::make_pair(child->trans * ray.first, child->trans * ray.second)));
+        intersections.push_back(child->intersect(std::make_pair(child->invtrans * ray.first, child->invtrans * ray.second)));
     }
     double closest_distance = DBL_MAX;
     Intersection *intersect = nullptr;
@@ -42,8 +42,8 @@ Intersection *GeometryNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     }
     if (intersect)
     {
-        intersect->point = invtrans * intersect->point;
-        intersect->normal = invtrans * intersect->normal;
+        intersect->point = trans * intersect->point;
+        intersect->normal = trans * intersect->normal;
     }
     // std::cout << intersect << std::endl;
     return intersect;
