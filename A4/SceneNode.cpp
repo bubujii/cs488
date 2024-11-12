@@ -162,11 +162,15 @@ Intersection *SceneNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     bool found_intersect = false;
     for (auto intersection : intersections)
     {
-        if (!intersection || glm::dot(intersection->point - ray.first, ray.second - ray.first) < 0)
-        {
-            delete intersection;
+        if (!intersection)
             continue;
-        }
+        if (glm::dot(intersection->point - ray.first, ray.second - ray.first) < 0)
+            continue;
+        // if (!intersection || glm::dot(intersection->point - ray.first, ray.second - ray.first) < 0)
+        // {
+        //     delete intersection;
+        //     continue;
+        // }
         double distance = glm::distance(ray.first, intersection->point);
         if (distance < closest_distance)
         {
