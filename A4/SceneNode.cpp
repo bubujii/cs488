@@ -51,20 +51,20 @@ SceneNode::~SceneNode()
 }
 
 //---------------------------------------------------------------------------------------
-void SceneNode::set_transform(const glm::mat4 &m)
+void SceneNode::set_transform(const glm::dmat4 &m)
 {
     trans = m;
     invtrans = glm::inverse(m);
 }
 
 //---------------------------------------------------------------------------------------
-const glm::mat4 &SceneNode::get_transform() const
+const glm::dmat4 &SceneNode::get_transform() const
 {
     return trans;
 }
 
 //---------------------------------------------------------------------------------------
-const glm::mat4 &SceneNode::get_inverse() const
+const glm::dmat4 &SceneNode::get_inverse() const
 {
     return invtrans;
 }
@@ -100,18 +100,18 @@ void SceneNode::rotate(char axis, float angle)
     default:
         break;
     }
-    mat4 rot_matrix = glm::rotate(degreesToRadians(angle), rot_axis);
+    dmat4 rot_matrix = glm::rotate(degreesToRadians(angle), rot_axis);
     set_transform(rot_matrix * trans);
 }
 
 //---------------------------------------------------------------------------------------
-void SceneNode::scale(const glm::vec3 &amount)
+void SceneNode::scale(const glm::dvec3 &amount)
 {
     set_transform(glm::scale(amount) * trans);
 }
 
 //---------------------------------------------------------------------------------------
-void SceneNode::translate(const glm::vec3 &amount)
+void SceneNode::translate(const glm::dvec3 &amount)
 {
     set_transform(glm::translate(amount) * trans);
 }
@@ -148,10 +148,10 @@ std::ostream &operator<<(std::ostream &os, const SceneNode &node)
     return os;
 }
 
-Intersection *SceneNode::intersect(std::pair<glm::vec3, glm::vec3> ray)
+Intersection *SceneNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
-    ray.first = glm::vec3(invtrans * glm::vec4(ray.first, 1.0));
-    ray.second = glm::vec3(invtrans * glm::vec4(ray.second, 1.0));
+    ray.first = glm::dvec3(invtrans * glm::vec4(ray.first, 1.0));
+    ray.second = glm::dvec3(invtrans * glm::vec4(ray.second, 1.0));
     std::vector<Intersection *> intersections;
     for (auto child : children)
     {
@@ -184,7 +184,7 @@ Intersection *SceneNode::intersect(std::pair<glm::vec3, glm::vec3> ray)
     }
     if (intersect)
     {
-        intersect->point = glm::vec3(trans * glm::vec4(intersect->point, 1.0));
+        intersect->point = glm::dvec3(trans * glm::vec4(intersect->point, 1.0));
         intersect->normal = glm::mat3(glm::transpose(invtrans)) * intersect->normal;
     }
 

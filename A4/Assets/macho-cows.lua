@@ -8,6 +8,7 @@
 stone = gr.material({0.8, 0.7, 0.7}, {0.0, 0.0, 0.0}, 0)
 grass = gr.material({0.1, 0.7, 0.1}, {0.0, 0.0, 0.0}, 0)
 hide = gr.material({0.84, 0.6, 0.53}, {0.3, 0.3, 0.3}, 20)
+glass = gr.material({0.2, 0.2, 0.2}, {0.5, 0.7, 0.5}, 60, 1.2, 0.9)
 
 -- ##############################################
 -- the arch
@@ -45,7 +46,7 @@ s:translate(0, 4, 0)
 cow_poly = gr.mesh('cow', 'cow.obj')
 factor = 2.0/(2.76+3.637)
 
-cow_poly:set_material(hide)
+cow_poly:set_material(glass)
 
 cow_poly:translate(0.0, 3.637, 0.0)
 cow_poly:scale(factor, factor, factor)

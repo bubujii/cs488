@@ -220,7 +220,7 @@ extern "C" int gr_nh_sphere_cmd(lua_State *L)
 
   const char *name = luaL_checkstring(L, 1);
 
-  glm::vec3 pos;
+  glm::dvec3 pos;
   get_tuple(L, 2, &pos[0], 3);
 
   double radius = luaL_checknumber(L, 3);
@@ -243,7 +243,7 @@ extern "C" int gr_nh_box_cmd(lua_State *L)
 
   const char *name = luaL_checkstring(L, 1);
 
-  glm::vec3 pos;
+  glm::dvec3 pos;
   get_tuple(L, 2, &pos[0], 3);
 
   double size = luaL_checknumber(L, 3);
@@ -307,7 +307,7 @@ extern "C" int gr_light_cmd(lua_State *L)
   get_tuple(L, 2, col, 3);
   get_tuple(L, 3, l.falloff, 3);
 
-  l.colour = glm::vec3(col[0], col[1], col[2]);
+  l.colour = glm::dvec3(col[0], col[1], col[2]);
 
   data->light = new Light(l);
 
@@ -330,8 +330,8 @@ extern "C" int gr_render_cmd(lua_State *L)
   int width = luaL_checknumber(L, 3);
   int height = luaL_checknumber(L, 4);
 
-  glm::vec3 eye;
-  glm::vec3 view, up;
+  glm::dvec3 eye;
+  glm::dvec3 view, up;
 
   get_tuple(L, 5, &eye[0], 3);
   get_tuple(L, 6, &view[0], 3);
@@ -341,7 +341,7 @@ extern "C" int gr_render_cmd(lua_State *L)
 
   double ambient_data[3];
   get_tuple(L, 9, ambient_data, 3);
-  glm::vec3 ambient(ambient_data[0], ambient_data[1], ambient_data[2]);
+  glm::dvec3 ambient(ambient_data[0], ambient_data[1], ambient_data[2]);
 
   luaL_checktype(L, 10, LUA_TTABLE);
   int light_count = int(lua_rawlen(L, 10));
@@ -388,8 +388,8 @@ extern "C" int gr_material_cmd(lua_State *L)
     transparency = luaL_checknumber(L, 5);
   }
 
-  data->material = new PhongMaterial(glm::vec3(kd[0], kd[1], kd[2]),
-                                     glm::vec3(ks[0], ks[1], ks[2]),
+  data->material = new PhongMaterial(glm::dvec3(kd[0], kd[1], kd[2]),
+                                     glm::dvec3(ks[0], ks[1], ks[2]),
                                      shininess, ior, transparency);
 
   luaL_newmetatable(L, "gr.material");
@@ -457,7 +457,7 @@ extern "C" int gr_node_scale_cmd(lua_State *L)
     values[i] = luaL_checknumber(L, i + 2);
   }
 
-  self->scale(glm::vec3(values[0], values[1], values[2]));
+  self->scale(glm::dvec3(values[0], values[1], values[2]));
 
   return 0;
 }
@@ -479,7 +479,7 @@ extern "C" int gr_node_translate_cmd(lua_State *L)
     values[i] = luaL_checknumber(L, i + 2);
   }
 
-  self->translate(glm::vec3(values[0], values[1], values[2]));
+  self->translate(glm::dvec3(values[0], values[1], values[2]));
 
   return 0;
 }

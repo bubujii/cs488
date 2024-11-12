@@ -8,10 +8,10 @@
 class Intersection
 {
 public:
-    Intersection(glm::vec3 &point, Material *mat, glm::vec3 &normal)
+    Intersection(glm::dvec3 &point, Material *mat, glm::dvec3 &normal)
         : point{point}, mat{mat}, normal{normal} {}
     ~Intersection() {}
-    glm::vec3 point;
+    glm::dvec3 point;
     Material *mat;
-    glm::vec3 normal;
+    glm::dvec3 normal;
 };

@@ -9,21 +9,21 @@
 #include "Mesh.hpp"
 
 Mesh::Mesh(const std::string &fname)
-	: m_vertices(), m_faces(), bounding_box(glm::vec3(), 1.0)
+	: m_vertices(), m_faces(), bounding_box(glm::dvec3(), 1.0)
 {
 	std::string code;
 	double vx, vy, vz;
 	size_t s1, s2, s3;
 
 	std::ifstream ifs(("Assets/" + fname).c_str());
-	glm::vec3 lower_left;
-	glm::vec3 upper_right;
+	glm::dvec3 lower_left;
+	glm::dvec3 upper_right;
 	while (ifs >> code)
 	{
 		if (code == "v")
 		{
 			ifs >> vx >> vy >> vz;
-			m_vertices.push_back(glm::vec3(vx, vy, vz));
+			m_vertices.push_back(glm::dvec3(vx, vy, vz));
 			if (vx < lower_left.x)
 			{
 				lower_left.x = vx;
@@ -56,14 +56,14 @@ Mesh::Mesh(const std::string &fname)
 			m_faces.push_back(Triangle(s1 - 1, s2 - 1, s3 - 1));
 		}
 	}
-	glm::vec3 radius_max = upper_right - lower_left;
+	glm::dvec3 radius_max = upper_right - lower_left;
 	double radius = glm::max(glm::max(radius_max.x, radius_max.y), radius_max.z);
 	bounding_box = NonhierBox(lower_left, radius);
 
 	std::cout << "Loaded " << m_vertices.size() << " vertices." << std::endl;
 }
 
-std::pair<glm::vec3, glm::vec3> *Mesh::intersect(std::pair<glm::vec3, glm::vec3> ray)
+std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
 	auto bounding_intersect = bounding_box.intersect(ray);
 	if (!bounding_intersect)
@@ -76,11 +76,11 @@ std::pair<glm::vec3, glm::vec3> *Mesh::intersect(std::pair<glm::vec3, glm::vec3>
 	delete bounding_intersect;
 	auto epsilon = 0.000001;
 	auto total_faces = m_faces.size();
-	auto origin = glm::vec3(ray.first);
-	auto direction = glm::vec3(ray.second) - origin;
+	auto origin = glm::dvec3(ray.first);
+	auto direction = glm::dvec3(ray.second) - origin;
 	bool intersected = false;
-	auto intersect_point = glm::vec3(0.0);
-	auto normal = glm::vec3(0.0);
+	auto intersect_point = glm::dvec3(0.0);
+	auto normal = glm::dvec3(0.0);
 	auto distance = DBL_MAX;
 
 	// std::cout << "----------------" << std::endl;
@@ -104,19 +104,19 @@ std::pair<glm::vec3, glm::vec3> *Mesh::intersect(std::pair<glm::vec3, glm::vec3>
 		}
 		double inverse_det = 1.0 / det;
 		auto ray_to_vertex = origin - v1;
-		auto u = (double)glm::dot(ray_to_vertex, ray_cross_e2) * inverse_det;
+		auto u = glm::dot(ray_to_vertex, ray_cross_e2) * inverse_det;
 		if (u < 0 || u > 1)
 		{
 			continue;
 		}
 
 		auto ray_to_vertex_cross_e1 = glm::cross(ray_to_vertex, e1);
-		auto v = (double)glm::dot(direction, ray_to_vertex_cross_e1) * inverse_det;
+		auto v = glm::dot(direction, ray_to_vertex_cross_e1) * inverse_det;
 		if (v < 0 || u + v > 1)
 		{
 			continue;
 		}
-		auto t_val = (double)glm::dot(e2, ray_to_vertex_cross_e1) * inverse_det;
+		auto t_val = glm::dot(e2, ray_to_vertex_cross_e1) * inverse_det;
 		if (t_val < epsilon)
 		{
 			continue;
@@ -133,7 +133,7 @@ std::pair<glm::vec3, glm::vec3> *Mesh::intersect(std::pair<glm::vec3, glm::vec3>
 	}
 	if (intersected)
 	{
-		return new std::pair<glm::vec3, glm::vec3>(intersect_point, normal);
+		return new std::pair<glm::dvec3, glm::dvec3>(intersect_point, normal);
 	}
 	return nullptr;
 }

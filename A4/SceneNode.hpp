@@ -26,16 +26,16 @@ public:
 
     SceneNode(const SceneNode &other);
 
-    virtual Intersection *intersect(std::pair<glm::vec3, glm::vec3> ray);
+    virtual Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray);
 
     virtual ~SceneNode();
 
     int totalSceneNodes() const;
 
-    const glm::mat4 &get_transform() const;
-    const glm::mat4 &get_inverse() const;
+    const glm::dmat4 &get_transform() const;
+    const glm::dmat4 &get_inverse() const;
 
-    void set_transform(const glm::mat4 &m);
+    void set_transform(const glm::dmat4 &m);
 
     void add_child(SceneNode *child);
 
@@ -43,14 +43,14 @@ public:
 
     //-- Transformations:
     void rotate(char axis, float angle);
-    void scale(const glm::vec3 &amount);
-    void translate(const glm::vec3 &amount);
+    void scale(const glm::dvec3 &amount);
+    void translate(const glm::dvec3 &amount);
 
     friend std::ostream &operator<<(std::ostream &os, const SceneNode &node);
 
     // Transformations
-    glm::mat4 trans;
-    glm::mat4 invtrans;
+    glm::dmat4 trans;
+    glm::dmat4 invtrans;
 
     std::list<SceneNode *> children;
 

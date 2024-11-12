@@ -8,7 +8,7 @@
 #include "Light.hpp"
 #include "Image.hpp"
 
-glm::vec3 get_color(SceneNode *root, std::pair<glm::vec3, glm::vec3> ray, const glm::vec3 &ambient, const std::list<Light *> &lights, int depth, float ior, std::vector<glm::vec3> refract_stack);
+glm::dvec3 get_color(SceneNode *root, std::pair<glm::dvec3, glm::dvec3> ray, const glm::dvec3 &ambient, const std::list<Light *> &lights, int depth, float ior, std::vector<glm::dvec3> refract_stack);
 
 void A4_Render(
 	// What to render
@@ -18,11 +18,11 @@ void A4_Render(
 	Image &image,
 
 	// Viewing parameters
-	const glm::vec3 &eye,
-	const glm::vec3 &view,
-	const glm::vec3 &up,
+	const glm::dvec3 &eye,
+	const glm::dvec3 &view,
+	const glm::dvec3 &up,
 	double fovy,
 
 	// Lighting parameters
-	const glm::vec3 &ambient,
+	const glm::dvec3 &ambient,
 	const std::list<Light *> &lights);

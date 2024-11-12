@@ -6,30 +6,28 @@
 #include "PhongMaterial.hpp"
 #include "A4.hpp"
 
-glm::vec3 get_color(SceneNode *root, std::pair<glm::vec3, glm::vec3> ray, const glm::vec3 &ambient, const std::list<Light *> &lights, int depth, float ior, std::vector<Intersection *> refract_stack)
+glm::dvec3 get_color(SceneNode *root, std::pair<glm::dvec3, glm::dvec3> ray, const glm::dvec3 &ambient, const std::list<Light *> &lights, int depth, float ior)
 {
     auto intersect = root->intersect(ray);
     if (intersect)
     {
-        refract_stack.push_back(intersect);
         PhongMaterial *mat = (PhongMaterial *)intersect->mat;
-        glm::vec3 light_color = ambient * mat->m_kd;
-        glm::vec3 refraction_component = glm::vec3(0);
-        glm::vec3 normal = glm::normalize(glm::vec3(intersect->normal));
-        if (mat->m_index_of_refraction && mat->m_transparency && depth < 7)
+        glm::dvec3 light_color = ambient * mat->m_kd;
+        glm::dvec3 refraction_component = glm::dvec3(0);
+        glm::dvec3 normal = glm::normalize(glm::dvec3(intersect->normal));
+        if (mat->m_index_of_refraction && mat->m_transparency && depth < 20)
         {
-            refract_stack.pop_back();
 
-            float eta = 1 / mat->m_index_of_refraction;
+            double eta = 1.0 / mat->m_index_of_refraction;
 
             if (glm::dot(intersect->point - ray.first, intersect->normal) > 0)
             {
-                eta = 1 / eta;
+                eta = 1.0 / eta;
                 intersect->normal = -intersect->normal;
             }
 
-            auto refraction_ray = glm::refract(glm::normalize(intersect->point - ray.first), intersect->normal, 1.f / mat->m_index_of_refraction);
-            auto intersect_corrected = intersect->point + 0.01 * refraction_ray;
+            auto refraction_ray = glm::refract(glm::normalize(intersect->point - ray.first), glm::normalize(intersect->normal), eta);
+            auto intersect_corrected = intersect->point + 0.001 * refraction_ray;
 
             refraction_component = get_color(
                 root,
@@ -37,59 +35,62 @@ glm::vec3 get_color(SceneNode *root, std::pair<glm::vec3, glm::vec3> ray, const 
                 ambient,
                 lights,
                 depth + 1,
-                mat->m_index_of_refraction,
-                refract_stack);
+                mat->m_index_of_refraction);
         }
         // INSERT COLOR CALCULATION HERE
-        for (auto intersect_calc : refract_stack)
+        for (auto light : lights)
         {
-            for (auto light : lights)
+            glm::dvec3 light_pos = glm::dvec3(light->position);
+            auto corrected_intersect = intersect->point + 0.001 * intersect->normal;
+            glm::dvec3 light_dir = glm::normalize(light_pos - glm::dvec3(corrected_intersect));
+            auto shadow_ray = std::make_pair(corrected_intersect, light_pos);
+            auto shadow_intersect = root->intersect(shadow_ray);
+            if (
+                !shadow_intersect || glm::distance(glm::dvec3(shadow_intersect->point), light_pos) > glm::distance(glm::dvec3(intersect->point), light_pos))
             {
-                glm::vec3 light_pos = glm::vec3(light->position);
-                auto corrected_intersect = intersect->point + 0.01 * intersect->normal;
-                glm::vec3 light_dir = glm::normalize(light_pos - glm::vec3(corrected_intersect));
-                auto shadow_ray = std::make_pair(corrected_intersect, light_pos);
-                auto shadow_intersect = root->intersect(shadow_ray);
-                if (
-                    !shadow_intersect || glm::distance(glm::vec3(shadow_intersect->point), light_pos) > glm::distance(glm::vec3(intersect->point), light_pos))
-                {
 
-                    double diffuse_intensity = std::max((double)glm::dot(normal, light_dir), 0.0);
-                    glm::vec3 diffuse_term = mat->m_kd * light->colour * diffuse_intensity;
-                    glm::vec3 view_dir = glm::normalize(glm::vec3(ray.first - intersect->point));
-                    glm::vec3 reflect_dir = glm::reflect(-light_dir, normal);
-                    double specular_intensity = std::pow(std::max((double)glm::dot(view_dir, reflect_dir), 0.0), mat->m_shininess);
-                    glm::vec3 specular_term = mat->m_ks * light->colour * specular_intensity;
+                double distance_to_light = glm::distance(intersect->point, light->position);
+                double attenuation_value = 1 / (light->falloff[0] + light->falloff[1] * (distance_to_light) + light->falloff[2] * (distance_to_light * distance_to_light));
 
-                    light_color += diffuse_term + specular_term;
-                }
-                if (shadow_intersect)
+                double diffuse_intensity = std::max((double)glm::dot(normal, light_dir), 0.0);
+                glm::dvec3 diffuse_term = mat->m_kd * attenuation_value * light->colour * diffuse_intensity;
+                glm::dvec3 view_dir = glm::normalize(glm::dvec3(ray.first - intersect->point));
+                glm::dvec3 reflect_dir = glm::reflect(-light_dir, normal);
+                double specular_intensity = std::pow(std::max((double)glm::dot(view_dir, reflect_dir), 0.0), mat->m_shininess);
+                glm::dvec3 specular_term = mat->m_ks * attenuation_value * light->colour * specular_intensity;
+
+                if (mat->m_transparency)
                 {
-                    delete shadow_intersect;
+                    diffuse_term *= (1.0 - mat->m_transparency);
                 }
+                light_color += diffuse_term + specular_term;
+            }
+            if (shadow_intersect)
+            {
+                delete shadow_intersect;
             }
         }
         delete intersect;
-        return (1.0 - mat->m_transparency) * light_color + mat->m_transparency * refraction_component;
+        return light_color + mat->m_transparency * refraction_component;
     }
     else
     {
-        // if (glm::dot(glm::vec3(0.0, 1.0, 0.0), glm::vec3(ray.second - ray.first)) > 0)
+        // if (glm::dot(glm::dvec3(0.0, 1.0, 0.0), glm::dvec3(ray.second - ray.first)) > 0)
         // {
-        //     return glm::vec3(1.0);
+        //     return glm::dvec3(1.0);
         // }
         // else
         // {
-        //     return glm::vec3(0.0);
+        //     return glm::dvec3(0.0);
         // }
         auto probability_of_star = 0.005;
         if ((double)rand() / RAND_MAX < probability_of_star)
         {
-            return glm::vec3(1.0);
+            return glm::dvec3(1.0);
         }
         else
         {
-            return glm::vec3(0.0);
+            return glm::dvec3(0.0);
         }
     }
 }
@@ -102,13 +103,13 @@ void A4_Render(
     Image &image,
 
     // Viewing parameters
-    const glm::vec3 &eye,
-    const glm::vec3 &view,
-    const glm::vec3 &up,
+    const glm::dvec3 &eye,
+    const glm::dvec3 &view,
+    const glm::dvec3 &up,
     double fovy,
 
     // Lighting parameters
-    const glm::vec3 &ambient,
+    const glm::dvec3 &ambient,
     const std::list<Light *> &lights)
 {
 
@@ -139,25 +140,24 @@ void A4_Render(
     double vh = 2 * std::tan(glm::radians(fovy / 2)) * focal_length;
     double vw = vh * (double(w) / h);
 
-    glm::vec3 v_right = vw * glm::normalize(glm::cross(view - eye, up));
-    glm::vec3 v_down = vh * glm::normalize(-up);
+    glm::dvec3 v_right = vw * glm::normalize(glm::cross(view - eye, up));
+    glm::dvec3 v_down = vh * glm::normalize(-up);
 
-    glm::vec3 pixel_delta_x = v_right / w;
-    glm::vec3 pixel_delta_y = v_down / h;
+    glm::dvec3 pixel_delta_x = v_right / w;
+    glm::dvec3 pixel_delta_y = v_down / h;
 
-    glm::vec3 vp_upper_left = eye + focal_length * glm::normalize(view - eye) - v_right / 2 - v_down / 2;
-    glm::vec3 pixel00 = vp_upper_left + 0.5 * (pixel_delta_x + pixel_delta_y);
+    glm::dvec3 vp_upper_left = eye + focal_length * glm::normalize(view - eye) - v_right / 2.0 - v_down / 2.0;
+    glm::dvec3 pixel00 = vp_upper_left + 0.5 * (pixel_delta_x + pixel_delta_y);
     for (uint y = 0; y < h; ++y)
     {
         for (uint x = 0; x < w; ++x)
         {
 
-            glm::vec3 pixel = pixel00 + (x * pixel_delta_x) + (y * pixel_delta_y);
+            glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
 
-            std::pair<glm::vec3, glm::vec3> ray = std::make_pair(eye, pixel);
+            std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
             // std::cout << "---------" << std::endl;
-            std::vector<Intersection *> refract_stack;
-            auto color = get_color(root, ray, ambient, lights, 0, 1.0, refract_stack);
+            auto color = get_color(root, ray, ambient, lights, 0, 1.0);
             // std::cout << "---------" << std::endl;
             image(x, y, 0) = color.r;
             image(x, y, 1) = color.g;
