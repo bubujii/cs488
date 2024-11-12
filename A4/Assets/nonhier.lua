@@ -23,8 +23,8 @@ b1 = gr.nh_box('b1', {-200, -225, 100}, 100)
 scene_root:add_child(b1)
 b1:set_material(mat4)
 
--- s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
-s4 = gr.nh_sphere('s4', {-150, -085, 150}, 30)
+s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
+-- s4 = gr.nh_sphere('s4', {-150, -085, 150}, 30)
 scene_root:add_child(s4)
 s4:set_material(mat3)
 

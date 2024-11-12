@@ -75,7 +75,16 @@ glm::dvec3 get_color(SceneNode *root, std::pair<glm::dvec3, glm::dvec3> ray, con
     }
     else
     {
-        // if (glm::dot(glm::dvec3(0.0, 1.0, 0.0), glm::dvec3(ray.second - ray.first)) > 0)
+        if (glm::dot(glm::dvec3(0.0, 1.0, 0.0), glm::dvec3(ray.second - ray.first)) > 0)
+        {
+            return glm::dvec3(0.0, 1.0, 1.0);
+        }
+        else
+        {
+            return glm::dvec3(0.0);
+        }
+        // auto probability_of_star = 0.005;
+        // if ((double)rand() / RAND_MAX < probability_of_star)
         // {
         //     return glm::dvec3(1.0);
         // }
@@ -83,15 +92,6 @@ glm::dvec3 get_color(SceneNode *root, std::pair<glm::dvec3, glm::dvec3> ray, con
         // {
         //     return glm::dvec3(0.0);
         // }
-        auto probability_of_star = 0.005;
-        if ((double)rand() / RAND_MAX < probability_of_star)
-        {
-            return glm::dvec3(1.0);
-        }
-        else
-        {
-            return glm::dvec3(0.0);
-        }
     }
 }
 
