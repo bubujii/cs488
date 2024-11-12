@@ -8,7 +8,7 @@
 #include "Light.hpp"
 #include "Image.hpp"
 
-glm::vec3 get_color(SceneNode *root, std::pair<glm::vec4, glm::vec4> ray, const glm::vec3 &ambient, const std::list<Light *> &lights, int depth, float ior);
+glm::vec3 get_color(SceneNode *root, std::pair<glm::vec3, glm::vec3> ray, const glm::vec3 &ambient, const std::list<Light *> &lights, int depth, float ior, std::vector<glm::vec3> refract_stack);
 
 void A4_Render(
 	// What to render

@@ -12,7 +12,7 @@ public:
     GeometryNode(const std::string &name, Primitive *prim,
                  Material *mat = nullptr);
 
-    Intersection *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    Intersection *intersect(std::pair<glm::vec3, glm::vec3> ray) override;
 
     void setMaterial(Material *material);
 

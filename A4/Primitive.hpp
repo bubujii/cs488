@@ -10,13 +10,13 @@ class Primitive
 {
 public:
     virtual ~Primitive();
-    virtual std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray);
+    virtual std::pair<glm::vec3, glm::vec3> *intersect(std::pair<glm::vec3, glm::vec3> ray);
 };
 
 class Sphere : public Primitive
 {
 public:
-    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    std::pair<glm::vec3, glm::vec3> *intersect(std::pair<glm::vec3, glm::vec3> ray) override;
     virtual ~Sphere();
 };
 
@@ -33,7 +33,7 @@ public:
         : m_pos(pos), m_radius(radius)
     {
     }
-    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    std::pair<glm::vec3, glm::vec3> *intersect(std::pair<glm::vec3, glm::vec3> ray) override;
     virtual ~NonhierSphere();
 
 private:
@@ -48,7 +48,7 @@ public:
         : m_pos(pos), m_size(size)
     {
     }
-    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    std::pair<glm::vec3, glm::vec3> *intersect(std::pair<glm::vec3, glm::vec3> ray) override;
     virtual ~NonhierBox();
 
 private:

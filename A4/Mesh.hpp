@@ -32,7 +32,7 @@ class Mesh : public Primitive
 {
 public:
     Mesh(const std::string &fname);
-    std::pair<glm::vec4, glm::vec4> *intersect(std::pair<glm::vec4, glm::vec4> ray) override;
+    std::pair<glm::vec3, glm::vec3> *intersect(std::pair<glm::vec3, glm::vec3> ray) override;
 
 private:
     std::vector<glm::vec3> m_vertices;

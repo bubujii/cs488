@@ -63,7 +63,7 @@ Mesh::Mesh(const std::string &fname)
 	std::cout << "Loaded " << m_vertices.size() << " vertices." << std::endl;
 }
 
-std::pair<glm::vec4, glm::vec4> *Mesh::intersect(std::pair<glm::vec4, glm::vec4> ray)
+std::pair<glm::vec3, glm::vec3> *Mesh::intersect(std::pair<glm::vec3, glm::vec3> ray)
 {
 	auto bounding_intersect = bounding_box.intersect(ray);
 	if (!bounding_intersect)
@@ -133,7 +133,7 @@ std::pair<glm::vec4, glm::vec4> *Mesh::intersect(std::pair<glm::vec4, glm::vec4>
 	}
 	if (intersected)
 	{
-		return new std::pair<glm::vec4, glm::vec4>(glm::vec4(intersect_point, 1), glm::vec4(normal, 0));
+		return new std::pair<glm::vec3, glm::vec3>(intersect_point, normal);
 	}
 	return nullptr;
 }

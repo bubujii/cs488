@@ -3,7 +3,7 @@
 mat1 = gr.material({0.7, 1.0, 0.7}, {0.5, 0.7, 0.5}, 25)
 mat2 = gr.material({0.5, 0.5, 0.5}, {0.5, 0.7, 0.5}, 25)
 mat3 = gr.material({1.0, 0.6, 0.1}, {0.5, 0.7, 0.5}, 25)
-glass = gr.material({1.0, 1.0, 1.0}, {0.5, 0.7, 0.5}, 25, 1.4, 0.3)
+glass = gr.material({1.0, 0.3, 1.0}, {0.5, 0.7, 0.5}, 25, 1.4, 0.9)
 
 scene_root = gr.node('root')
 
@@ -15,9 +15,9 @@ s6 = gr.nh_sphere('s6', {0, 0, -125}, 50)
 scene_root:add_child(s6)
 s6:set_material(glass)
 
-s2 = gr.nh_sphere('s2', {200, 50, -100}, 150)
+s2 = gr.nh_sphere('s2', {200, 0, -100}, 150)
 scene_root:add_child(s2)
-s2:set_material(mat3)
+s2:set_material(glass)
 
 s3 = gr.nh_sphere('s3', {0, -1200, -500}, 1000)
 scene_root:add_child(s3)

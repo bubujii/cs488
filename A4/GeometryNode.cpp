@@ -11,10 +11,10 @@ GeometryNode::GeometryNode(
     m_nodeType = NodeType::GeometryNode;
 }
 
-Intersection *GeometryNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
+Intersection *GeometryNode::intersect(std::pair<glm::vec3, glm::vec3> ray)
 {
-    ray.first = invtrans * ray.first;
-    ray.second = invtrans * ray.second;
+    ray.first = glm::vec3(invtrans * glm::vec4(ray.first, 1.0));
+    ray.second = glm::vec3(invtrans * glm::vec4(ray.second, 1.0));
     std::vector<Intersection *> intersections;
     auto intersect_point = m_primitive->intersect(ray);
     if (intersect_point)
@@ -53,8 +53,8 @@ Intersection *GeometryNode::intersect(std::pair<glm::vec4, glm::vec4> ray)
     }
     if (intersect)
     {
-        intersect->point = trans * intersect->point;
-        intersect->normal = glm::vec4(glm::mat3(glm::transpose(invtrans)) * glm::vec3(intersect->normal), 0.0);
+        intersect->point = glm::vec3(trans * glm::vec4(intersect->point, 1.0));
+        intersect->normal = glm::mat3(glm::transpose(invtrans)) * intersect->normal;
     }
     return intersect;
 }

@@ -1,7 +1,7 @@
 m_kd: vec3(0.700000, 1.000000, 0.700000)refraction: 0 transparency: 0
 m_kd: vec3(0.500000, 0.500000, 0.500000)refraction: 0 transparency: 0
 m_kd: vec3(1.000000, 0.600000, 0.100000)refraction: 0 transparency: 0
-m_kd: vec3(1.000000, 1.000000, 1.000000)refraction: 1.4 transparency: 0.3
+m_kd: vec3(1.000000, 1.000000, 1.000000)refraction: 1.2 transparency: 0.9
 F24: Calling A4_Render(
 	SceneNode:[name:root, id:0]
 	Image(width:800, height:450)
