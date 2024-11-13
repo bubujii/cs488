@@ -23,6 +23,7 @@ public:
 class Cube : public Primitive
 {
 public:
+    std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~Cube();
 };
 

@@ -46,7 +46,7 @@ s:translate(0, 4, 0)
 cow_poly = gr.mesh('cow', 'cow.obj')
 factor = 2.0/(2.76+3.637)
 
-cow_poly:set_material(glass)
+cow_poly:set_material(hide)
 
 cow_poly:translate(0.0, 3.637, 0.0)
 cow_poly:scale(factor, factor, factor)

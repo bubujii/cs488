@@ -3,8 +3,8 @@
 mat1 = gr.material({0.7, 1.0, 0.7}, {0.5, 0.7, 0.5}, 25)
 mat2 = gr.material({0.5, 0.5, 0.5}, {0.5, 0.7, 0.5}, 25)
 mat3 = gr.material({1.0, 0.6, 0.1}, {0.5, 0.7, 0.5}, 25)
-glass = gr.material({0.0, 0.2, 0.2}, {0.5, 0.7, 0.5}, 60, 1.2, 0.9)
-blue_glass = gr.material({1.0, 1.0, 1.0}, {0.5, 0.7, 0.5}, 60, 1.2, 0.996)
+glass = gr.material({0.0, 0.0, 0.0}, {0.5, 0.7, 0.5}, 25, 1.2, 0.9)
+blue_glass = gr.material({0.14510, 0.48627, 0.639216}, {0.5, 0.7, 0.5}, 60, 1.2, 1.0)
 
 scene_root = gr.node('root')
 
@@ -28,17 +28,17 @@ s2:set_material(mat3)
 -- test:add_child(s8)
 -- scene_root:add_child(test)
 
-s9 = gr.nh_sphere('s9', {0, 0, 200}, 50)
-scene_root:add_child(s9)
-s9:set_material(glass)
+-- s9 = gr.nh_sphere('s9', {0, 0, 200}, 50)
+-- scene_root:add_child(s9)
+-- s9:set_material(glass)
 
--- s6 = gr.mesh('cat', 'cat.obj')
--- s6:scale(20, 20, 20)
--- s6:rotate('z', 90)
--- s6:rotate('x', -90)
--- s6:translate(-20, 30, -200)
--- scene_root:add_child(s6)
--- s6:set_material(blue_glass)
+s6 = gr.mesh('cat', 'cat.obj')
+s6:scale(20, 20, 20)
+s6:rotate('z', 90)
+s6:rotate('x', -90)
+s6:translate(20, 100, -200)
+scene_root:add_child(s6)
+s6:set_material(glass)
 
 s7 = gr.nh_sphere('s7', {-10, -20, -400}, 50)
 scene_root:add_child(s7)
@@ -48,6 +48,6 @@ s7:set_material(glass)
 white_light = gr.light({-100.0, 150.0, 400.0}, {0.9, 0.9, 0.9}, {1, 0, 0})
 magenta_light = gr.light({400.0, 100.0, 150.0}, {0.7, 0.0, 0.7}, {1, 0, 0})
 
-gr.render(scene_root, 'stupid.png', 800, 450,
+gr.render(scene_root, 'stupid3.png', 800, 450,
 	  {0, 0, 800}, {0, 0, -800}, {0, 1, 0}, 30,
 	  {0.3, 0.3, 0.3}, {white_light, magenta_light})
