@@ -23,8 +23,8 @@ b1 = gr.nh_box('b1', {-200, -225, 100}, 100)
 scene_root:add_child(b1)
 b1:set_material(mat4)
 
-s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
--- s4 = gr.nh_sphere('s4', {-150, -085, 150}, 30)
+-- s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
+s4 = gr.nh_sphere('s4', {-150, -085, 150}, 30)
 scene_root:add_child(s4)
 s4:set_material(mat3)
 
@@ -41,6 +41,6 @@ scene_root:add_child(steldodec)
 white_light = gr.light({-100.0, 150.0, 400.0}, {0.9, 0.9, 0.9}, {1, 0, 0})
 magenta_light = gr.light({400.0, 100.0, 150.0}, {0.7, 0.0, 0.7}, {1, 0, 0})
 
-gr.render(scene_root, 'nonhier1.png', 512, 512,
+gr.render(scene_root, 'nonhier.png', 512, 512,
 	  {0, 0, 800}, {0, 0, -1}, {0, 1, 0}, 50,
 	  {0.3, 0.3, 0.3}, {white_light, magenta_light})
