@@ -33,13 +33,6 @@ Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
     {
         if (!intersection)
             continue;
-        if (glm::dot(ray.second - ray.first, intersection->point - ray.first) < 0)
-            continue;
-        // if (!intersection || glm::dot(intersection->point - ray.first, ray.second - ray.first) < 0)
-        // {
-        //     delete intersection;
-        //     continue;
-        // }
         double distance = glm::distance(ray.first, intersection->point);
         if (distance < closest_distance)
         {

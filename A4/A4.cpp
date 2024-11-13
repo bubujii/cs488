@@ -8,9 +8,11 @@
 
 glm::dvec3 get_background_color(const glm::dvec3 &up, std::pair<glm::dvec3, glm::dvec3> ray)
 {
-    glm::dvec3 sky_blue = glm::dvec3(0.114, 0.604, 0.871);
-    sky_blue = (1 - glm::dot(up, glm::normalize(ray.second - ray.first))) * sky_blue;
-    return sky_blue;
+
+    glm::dvec3 start_color = glm::dvec3(231, 154, 255) / 255.0;
+    glm::dvec3 end_color = glm::dvec3(193.0 / 255.0, 9.0 / 255.0, 0);
+    double lerp_param = (glm::dot(up, glm::normalize(ray.second - ray.first)) + 1) / 2;
+    return glm::mix(end_color, start_color, lerp_param);
 }
 
 glm::dvec3 get_refract_ray(Intersection *intersect, glm::dvec3 &origin)
@@ -69,7 +71,7 @@ glm::dvec3 get_refract_color(
     if (R < epsilon)
         R = 0.0;
 
-    if (R < 1.0)
+    if (R < 1.0 && !glm::all(glm::isnan(refraction_ray)))
     {
         refraction_component = get_color(
             root,
@@ -109,8 +111,7 @@ glm::dvec3 get_color(
     int depth,
     const glm::dvec3 &up)
 {
-    auto sky_blue = glm::dvec3(0.114, 0.604, 0.871);
-    sky_blue = (1 - glm::dot(up, glm::normalize(ray.second - ray.first))) * sky_blue;
+    auto sky_blue = get_background_color(up, ray);
     auto intersect = root->intersect(ray);
     if (intersect)
     {
@@ -131,11 +132,19 @@ glm::dvec3 get_color(
         glm::dvec3 specular_term = glm::dvec3(0);
         for (auto light : lights)
         {
-            glm::dvec3 light_pos = glm::dvec3(light->position);
+            glm::dvec3 light_pos = light->position;
             auto corrected_intersect = intersect->point + 0.01 * intersect->normal;
-            glm::dvec3 light_dir = glm::normalize(light_pos - glm::dvec3(corrected_intersect));
+            glm::dvec3 light_dir = glm::normalize(light_pos - corrected_intersect);
             auto shadow_ray = std::make_pair(corrected_intersect, light_pos);
             auto shadow_intersect = root->intersect(shadow_ray);
+            if (shadow_intersect) // no shadows if the object is transparent
+            {
+                PhongMaterial *shadow_mat = (PhongMaterial *)shadow_intersect->mat;
+                if (shadow_mat->m_transparency)
+                {
+                    shadow_intersect = nullptr;
+                }
+            }
             if (
                 !shadow_intersect || glm::distance(shadow_intersect->point, intersect->point) > glm::distance(glm::dvec3(intersect->point), light_pos))
             {
@@ -222,10 +231,6 @@ void A4_Render(
     glm::dvec3 vp_upper_left = eye + focal_length * glm::normalize(view - eye) - v_right / 2.0 - v_down / 2.0;
     glm::dvec3 pixel00 = vp_upper_left + 0.5 * (pixel_delta_x + pixel_delta_y);
     glm::dvec3 forward = glm::normalize(view - eye);
-    double k = glm::dot(up, forward) / glm::l1Norm(forward);
-    glm::dvec3 up_corrected = glm::normalize(up + k * forward);
-
-    std::cout << "up_corrected: " << glm::to_string(up_corrected) << std::endl;
     for (uint y = 0; y < h; ++y)
     {
         for (uint x = 0; x < w; ++x)
@@ -234,9 +239,7 @@ void A4_Render(
             glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
 
             std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
-            // std::cout << "---------" << std::endl;
-            auto color = get_color(root, ray, ambient, lights, 0, up_corrected);
-            // std::cout << "---------" << std::endl;
+            auto color = get_color(root, ray, ambient, lights, 0, up);
 
             image(x, y, 0) = color.r;
             image(x, y, 1) = color.g;

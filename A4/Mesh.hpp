@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <iosfwd>
+#include "GeometryNode.hpp"
 #include <string>
 
 #include <glm/glm.hpp>
@@ -37,7 +38,7 @@ public:
 private:
     std::vector<glm::dvec3> m_vertices;
     std::vector<Triangle> m_faces;
-    NonhierBox bounding_box;
+    GeometryNode bounding_box;
 
     friend std::ostream &operator<<(std::ostream &out, const Mesh &mesh);
 };

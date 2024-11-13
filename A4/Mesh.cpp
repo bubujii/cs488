@@ -9,13 +9,17 @@
 #include "Mesh.hpp"
 
 Mesh::Mesh(const std::string &fname)
-    : m_vertices(), m_faces(), bounding_box(glm::dvec3(), 1.0)
+    : m_vertices(), m_faces(), bounding_box(GeometryNode("Bounding Box", new Cube()))
 {
     std::string code;
     double vx, vy, vz;
     size_t s1, s2, s3;
 
-    std::ifstream ifs(("Assets/" + fname).c_str());
+    std::ifstream ifs((fname).c_str());
+    if (!ifs)
+    {
+        ifs = std::ifstream(("Assets/" + fname).c_str());
+    }
     glm::dvec3 lower_left;
     glm::dvec3 upper_right;
     while (ifs >> code)
@@ -56,11 +60,27 @@ Mesh::Mesh(const std::string &fname)
             m_faces.push_back(Triangle(s1 - 1, s2 - 1, s3 - 1));
         }
     }
-    glm::dvec3 radius_max = upper_right - lower_left;
-    double radius = glm::max(glm::max(radius_max.x, radius_max.y), radius_max.z);
-    bounding_box = NonhierBox(lower_left, radius);
+    glm::dvec3 corner_distance = upper_right - lower_left;
+    if (corner_distance.x == 0)
+    {
+        corner_distance.x = 0.01;
+        lower_left.x -= 0.01;
+    }
+    if (corner_distance.y == 0)
+    {
+        corner_distance.y = 0.01;
+        lower_left.y -= 0.01;
+    }
+    if (corner_distance.z == 0)
+    {
+        corner_distance.z = 0.01;
+        lower_left.z -= 0.01;
+    }
+    bounding_box.scale(corner_distance);
+    bounding_box.translate(lower_left);
 
-    std::cout << "Loaded " << m_vertices.size() << " vertices." << std::endl;
+    std::cout
+        << "Loaded " << m_vertices.size() << " vertices." << std::endl;
 }
 
 std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
@@ -71,7 +91,9 @@ std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dv
         return nullptr;
     }
 #ifdef RENDER_BOUNDING_VOLUMES
-    return bounding_intersect;
+    std::pair<glm::dvec3, glm::dvec3> *bounding_intersect_pair = new std::pair<glm::dvec3, glm::dvec3>(bounding_intersect->point, bounding_intersect->normal);
+    delete bounding_intersect;
+    return bounding_intersect_pair;
 #endif
     delete bounding_intersect;
     auto epsilon = 0.000001;
@@ -82,12 +104,6 @@ std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dv
     auto intersect_point = glm::dvec3(0.0);
     auto normal = glm::dvec3(0.0);
     auto distance = DBL_MAX;
-
-    // std::cout << "----------------" << std::endl;
-    // std::cout << glm::to_string(direction) << std::endl;
-    // std::cout << glm::to_string(ray.first) << std::endl;
-    // std::cout << glm::to_string(m_vertices[m_faces[0].v1]) << std::endl;
-    // std::cout << "----------------" << std::endl;
 
     for (size_t i = 0; i < total_faces; i++)
     {
