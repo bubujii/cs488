@@ -123,7 +123,7 @@ glm::dvec3 get_color(
         {
             refraction_component = get_refract_color(intersect, root, ray, ambient, lights, depth, up);
         }
-        else
+        else if (depth >= 4)
         {
             refraction_component = sky_blue;
         }
@@ -165,7 +165,7 @@ glm::dvec3 get_color(
             }
         }
         delete intersect;
-        glm::dvec3 ret_color = (1.0 - mat->m_transparency) * diffuse_term + specular_term + refraction_component * mat->m_transparency + ambient_color;
+        glm::dvec3 ret_color = diffuse_term + specular_term + refraction_component + ambient_color;
         ret_color.x = glm::clamp(ret_color.x, 0.0, 1.0);
         ret_color.y = glm::clamp(ret_color.y, 0.0, 1.0);
         ret_color.z = glm::clamp(ret_color.z, 0.0, 1.0);
