@@ -1,6 +1,7 @@
 // Termm--Fall 2024
 
 #include "SceneNode.hpp"
+#include "PhongMaterial.hpp"
 
 #include "cs488-framework/MathUtils.hpp"
 
@@ -148,7 +149,7 @@ std::ostream &operator<<(std::ostream &os, const SceneNode &node)
     return os;
 }
 
-Intersection *SceneNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+Intersection *SceneNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray)
 {
     ray.first = glm::dvec3(invtrans * glm::vec4(ray.first, 1.0));
     ray.second = glm::dvec3(invtrans * glm::vec4(ray.second, 1.0));
@@ -165,8 +166,18 @@ Intersection *SceneNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
         if (!intersection)
             continue;
         double distance = glm::distance(ray.first, intersection->point);
+        if (shadow_ray)
+        {
+            PhongMaterial *mat = (PhongMaterial *)intersection->mat;
+            if (mat->m_transparency)
+            {
+                delete intersection;
+                continue;
+            }
+        }
         if (distance < closest_distance && glm::dot(intersection->point - ray.first, ray.second - ray.first) > 0)
         {
+            delete intersect;
             intersect = intersection;
             closest_distance = distance;
         }

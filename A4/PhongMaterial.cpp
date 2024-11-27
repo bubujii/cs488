@@ -13,10 +13,10 @@ PhongMaterial::PhongMaterial(
 }
 
 PhongMaterial::PhongMaterial(
-    const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, double index_of_refraction, double transparency)
-    : m_kd(kd), m_ks(ks), m_shininess(shininess), m_index_of_refraction(index_of_refraction), m_transparency(transparency)
+    const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, const glm::dvec3 &ke, double index_of_refraction, double transparency, double reflectivity)
+    : m_kd(kd), m_ks(ks), m_shininess(shininess), m_ke(ke), m_index_of_refraction(index_of_refraction), m_transparency(transparency), m_reflectivity(reflectivity)
 {
-    std::cout << "m_kd: " << glm::to_string(m_kd) << "refraction: " << m_index_of_refraction << " transparency: " << m_transparency << std::endl;
+    std::cout << "m_kd: " << glm::to_string(m_kd) << "refraction: " << m_index_of_refraction << " transparency: " << m_transparency << " reflectivity: " << m_reflectivity << std::endl;
 }
 
 PhongMaterial::~PhongMaterial()

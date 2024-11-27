@@ -77,13 +77,13 @@ Mesh::Mesh(const std::string &fname)
         lower_left.z -= 0.01;
     }
     bounding_box.scale(corner_distance);
-    bounding_box.translate(lower_left);
+    // bounding_box.translate(lower_left);
 
     std::cout
         << "Loaded " << m_vertices.size() << " vertices." << std::endl;
 }
 
-std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
     auto bounding_intersect = bounding_box.intersect(ray);
     if (!bounding_intersect)
@@ -104,6 +104,10 @@ std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dv
     auto intersect_point = glm::dvec3(0.0);
     auto normal = glm::dvec3(0.0);
     auto distance = DBL_MAX;
+
+    glm::dvec3 v1_hit = glm::dvec3(0.0);
+    glm::dvec3 v2_hit = glm::dvec3(0.0);
+    glm::dvec3 v3_hit = glm::dvec3(0.0);
 
     for (size_t i = 0; i < total_faces; i++)
     {
@@ -145,11 +149,24 @@ std::pair<glm::dvec3, glm::dvec3> *Mesh::intersect(std::pair<glm::dvec3, glm::dv
             distance = dist;
             intersect_point = intersect;
             normal = glm::normalize(glm::cross(e1, e2));
+            v1_hit = v1;
+            v2_hit = v2;
+            v3_hit = v3;
         }
     }
     if (intersected)
     {
-        return new std::pair<glm::dvec3, glm::dvec3>(intersect_point, normal);
+        // auto ray_1 = intersect_point - v1_hit;
+        // auto ray_2 = intersect_point - v2_hit;
+        // double distance_e1 = glm::length(intersect_point - glm::dot(ray_1, v2_hit - v1_hit) * (v2_hit - v1_hit));
+        // double distance_e2 = glm::length(intersect_point - glm::dot(ray_1, v3_hit - v1_hit) * (v3_hit - v1_hit));
+        // double distance_e3 = glm::length(intersect_point - glm::dot(ray_2, v3_hit - v2_hit) * (v3_hit - v2_hit));
+        // double max_distance = 1;
+        // if (distance_e1 < max_distance || distance_e2 < max_distance || distance_e3 < max_distance)
+        // {
+        //     return new PrimitiveHit(intersect_point, normal, true);
+        // }
+        return new PrimitiveHit(intersect_point, normal);
     }
     return nullptr;
 }

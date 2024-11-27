@@ -11,8 +11,9 @@ class GeometryNode : public SceneNode
 public:
     GeometryNode(const std::string &name, Primitive *prim,
                  Material *mat = nullptr);
+    ~GeometryNode();
 
-    Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray = false) override;
 
     void setMaterial(Material *material);
 

@@ -8,12 +8,12 @@ Primitive::~Primitive()
 {
 }
 
-std::pair<glm::dvec3, glm::dvec3> *Primitive::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *Primitive::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
     return nullptr;
 }
 
-std::pair<glm::dvec3, glm::dvec3> *intersect_sphere(glm::dvec3 m_pos, double m_radius, std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *intersect_sphere(glm::dvec3 m_pos, double m_radius, std::pair<glm::dvec3, glm::dvec3> ray)
 {
     auto oc = m_pos - ray.first;
     glm::dvec3 direction = ray.second - ray.first;
@@ -38,12 +38,13 @@ std::pair<glm::dvec3, glm::dvec3> *intersect_sphere(glm::dvec3 m_pos, double m_r
     }
     glm::dvec3 intersect_point = ray.first + direction * intersect_t_val;
 
-    return new std::pair<glm::dvec3, glm::dvec3>(
+    glm::dvec3 normal = glm::normalize(intersect_point - m_pos);
+    return new PrimitiveHit(
         intersect_point,
-        glm::normalize(intersect_point - m_pos));
+        normal);
 }
 
-std::pair<glm::dvec3, glm::dvec3> *Sphere::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *Sphere::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
     return intersect_sphere(glm::dvec3(0.0), 1.0, ray);
 }
@@ -56,7 +57,7 @@ Cube::~Cube()
 {
 }
 
-std::pair<glm::dvec3, glm::dvec3> *NonhierSphere::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *NonhierSphere::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
     return intersect_sphere(m_pos, m_radius, ray);
 }
@@ -65,7 +66,7 @@ NonhierSphere::~NonhierSphere()
 {
 }
 
-std::pair<glm::dvec3, glm::dvec3> *intersect_cube(glm::dvec3 m_pos, double m_size, std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *intersect_cube(glm::dvec3 m_pos, double m_size, std::pair<glm::dvec3, glm::dvec3> ray)
 {
     auto ray_origin = glm::dvec3(ray.first);
     auto ray_second = glm::dvec3(ray.second);
@@ -134,10 +135,10 @@ std::pair<glm::dvec3, glm::dvec3> *intersect_cube(glm::dvec3 m_pos, double m_siz
         }
     }
     // std::cout << glm::to_string(normal) << std::endl;
-    return new std::pair<glm::dvec3, glm::dvec3>(intersect_point, normal);
+    return new PrimitiveHit(intersect_point, normal, false);
 }
 
-std::pair<glm::dvec3, glm::dvec3> *NonhierBox::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *NonhierBox::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
 
     return intersect_cube(m_pos, m_size, ray);
@@ -147,7 +148,49 @@ NonhierBox::~NonhierBox()
 {
 }
 
-std::pair<glm::dvec3, glm::dvec3> *Cube::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *Cube::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
-    return intersect_cube(glm::dvec3(0.0), 1.0, ray);
+    return intersect_cube(glm::dvec3(-0.5), 1.0, ray);
+}
+
+PrimitiveHit *Cylinder::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+{
+    glm::dvec3 axis = glm::dvec3(0.0, 1.0, 0.0);
+
+    glm::dvec3 d = ray.second - ray.first - glm::dot(ray.second - ray.first, axis) * axis;
+    glm::dvec3 oc = ray.first - glm::dot(ray.first, axis) * axis;
+
+    double a = glm::dot(d, d);
+    double b = 2 * glm::dot(d, oc);
+    double c = glm::dot(oc, oc) - 1;
+
+    double discriminant = b * b - 4 * a * c;
+
+    if (discriminant < 0)
+    {
+        return nullptr;
+    }
+
+    double t1 = (-b - glm::sqrt(discriminant)) / (2 * a);
+    double t2 = (-b + glm::sqrt(discriminant)) / (2 * a);
+
+    if (t1 < 0 && t2 < 0)
+    {
+        return nullptr;
+    }
+
+    double intersect_t_val = glm::min(t1, t2);
+    glm::dvec3 intersect_point = ray.first + (ray.second - ray.first) * intersect_t_val;
+
+    if (intersect_point.y < -0.5 || intersect_point.y > 0.5)
+    {
+        return nullptr;
+    }
+
+    glm::dvec3 normal = glm::normalize(glm::dvec3(intersect_point.x, 0.0, intersect_point.z));
+    return new PrimitiveHit(intersect_point, normal);
+}
+
+Cylinder::~Cylinder()
+{
 }

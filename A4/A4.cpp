@@ -64,9 +64,9 @@ glm::dvec3 get_refract_color(
     auto refraction_ray = glm::refract(glm::normalize(intersect->point - ray.first), glm::normalize(intersect->normal), eta);
     auto reflection_ray = glm::reflect(glm::normalize(intersect->point - ray.first), glm::normalize(intersect->normal));
     auto intersect_corrected = intersect->point + 0.001 * refraction_ray;
-    double epsilon = 0.00001;
+    double epsilon = 0.00000001;
 
-    if (R > 1.0 - epsilon)
+    if (R > 1.0 - epsilon || (mat->m_reflectivity == 1.0 && mat->m_transparency == 0.0))
         R = 1.0;
     if (R < epsilon)
         R = 0.0;
@@ -100,7 +100,7 @@ glm::dvec3 get_refract_color(
     {
         reflection_component = get_background_color(up, ray);
     }
-    return refraction_component * (1.0 - R) + reflection_component * R;
+    return mat->m_transparency * refraction_component * (1.0 - R) + mat->m_reflectivity * reflection_component * R;
 }
 
 glm::dvec3 get_color(
@@ -115,19 +115,26 @@ glm::dvec3 get_color(
     auto intersect = root->intersect(ray);
     if (intersect)
     {
+        if (intersect->edge_hit)
+        {
+            // delete intersect;
+            // return glm::dvec3(0, 1, 1);
+        }
         PhongMaterial *mat = (PhongMaterial *)intersect->mat;
         glm::dvec3 ambient_color = ambient * mat->m_kd;
         glm::dvec3 refraction_component = glm::dvec3(0);
         glm::dvec3 normal = glm::normalize(glm::dvec3(intersect->normal));
-        if (mat->m_index_of_refraction && mat->m_transparency && depth < 4)
+
+        if (((mat->m_index_of_refraction && mat->m_transparency) || mat->m_reflectivity) && depth < 8)
         {
             refraction_component = get_refract_color(intersect, root, ray, ambient, lights, depth, up);
         }
-        else
+        else if (depth >= 4)
         {
             refraction_component = sky_blue;
         }
         // INSERT COLOR CALCULATION HERE
+        glm::dvec3 light_color = ambient_color;
         glm::dvec3 diffuse_term = glm::dvec3(0);
         glm::dvec3 specular_term = glm::dvec3(0);
         for (auto light : lights)
@@ -136,15 +143,7 @@ glm::dvec3 get_color(
             auto corrected_intersect = intersect->point + 0.01 * intersect->normal;
             glm::dvec3 light_dir = glm::normalize(light_pos - corrected_intersect);
             auto shadow_ray = std::make_pair(corrected_intersect, light_pos);
-            auto shadow_intersect = root->intersect(shadow_ray);
-            if (shadow_intersect) // no shadows if the object is transparent
-            {
-                PhongMaterial *shadow_mat = (PhongMaterial *)shadow_intersect->mat;
-                if (shadow_mat->m_transparency)
-                {
-                    shadow_intersect = nullptr;
-                }
-            }
+            auto shadow_intersect = root->intersect(shadow_ray, true);
             if (
                 !shadow_intersect || glm::distance(shadow_intersect->point, intersect->point) > glm::distance(glm::dvec3(intersect->point), light_pos))
             {
@@ -153,11 +152,11 @@ glm::dvec3 get_color(
                 double attenuation_value = 1 / (light->falloff[0] + light->falloff[1] * (distance_to_light) + light->falloff[2] * (distance_to_light * distance_to_light));
 
                 double diffuse_intensity = std::max((double)glm::dot(normal, light_dir), 0.0);
-                diffuse_term += mat->m_kd * attenuation_value * light->colour * diffuse_intensity;
+                light_color += mat->m_kd * attenuation_value * light->colour * diffuse_intensity;
                 glm::dvec3 view_dir = glm::normalize(glm::dvec3(ray.first - intersect->point));
                 glm::dvec3 reflect_dir = glm::reflect(-light_dir, normal);
                 double specular_intensity = std::pow(std::max((double)glm::dot(view_dir, reflect_dir), 0.0), mat->m_shininess);
-                specular_term += mat->m_ks * attenuation_value * light->colour * specular_intensity;
+                light_color += mat->m_ks * attenuation_value * light->colour * specular_intensity;
             }
             if (shadow_intersect)
             {
@@ -165,16 +164,53 @@ glm::dvec3 get_color(
             }
         }
         delete intersect;
-        glm::dvec3 ret_color = (1.0 - mat->m_transparency) * diffuse_term + specular_term + refraction_component * mat->m_transparency + ambient_color;
-        ret_color.x = glm::clamp(ret_color.x, 0.0, 1.0);
-        ret_color.y = glm::clamp(ret_color.y, 0.0, 1.0);
-        ret_color.z = glm::clamp(ret_color.z, 0.0, 1.0);
+        glm::dvec3 ret_color = (1.0 - mat->m_transparency) * (1.0 - mat->m_reflectivity) * light_color + refraction_component + mat->m_ke;
+        if (depth == 0)
+        {
+            ret_color.x = glm::clamp(ret_color.x, 0.0, 1.0);
+            ret_color.y = glm::clamp(ret_color.y, 0.0, 1.0);
+            ret_color.z = glm::clamp(ret_color.z, 0.0, 1.0);
+        }
         return ret_color;
     }
     else
     {
         return sky_blue;
     }
+}
+
+glm::dvec3 get_color(Image &image, size_t x, size_t y)
+{
+    glm::dvec3 color = glm::dvec3(0);
+    color.r = image(x, y, 0);
+    color.g = image(x, y, 1);
+    color.b = image(x, y, 2);
+    return color;
+}
+
+bool should_anti_alias(Image &image, size_t x, size_t y, double threshold, size_t width, size_t height)
+{
+    glm::dvec3 color = get_color(image, x, y);
+    for (int i = -1; i < 2; ++i)
+    {
+        for (int j = -1; j < 2; ++j)
+        {
+            if (i == 0 && j == 0)
+            {
+                continue;
+            }
+            if (x + i < 0 || y + j < 0 || x + i >= width || y + j >= height)
+            {
+                continue;
+            }
+            glm::dvec3 new_color = get_color(image, x + i, y + j);
+            if (glm::distance(color, new_color) > threshold)
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void A4_Render(
@@ -247,5 +283,33 @@ void A4_Render(
         }
         std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
     }
-    std::clog << "\rDone.                      " << std::endl;
+    Image unaliased_image = image;
+    std::clog << "\rDone. On to Anti-Aliasing               " << std::endl;
+    double threshold = 0.10;
+    for (uint y = 0; y < h; ++y)
+    {
+        for (uint x = 0; x < w; ++x)
+        {
+            if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
+            {
+                // glm::dvec3 new_color = glm::dvec3(0);
+                // for (int p_count = 0; p_count < 20; ++p_count)
+                // {
+                //     glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
+                //     double x_jitter = ((rand() % 100) - 100) / 100.0;
+                //     double y_jitter = ((rand() % 100) - 100) / 100.0;
+                //     pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
+                //     std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
+                //     auto color = get_color(root, ray, ambient, lights, 0, up);
+                //     new_color += color;
+                // }
+                // new_color /= 20.0;
+                // image(x, y, 0) = 1.0; // new_color.r;
+                // image(x, y, 1) = 1.0; // new_color.g;
+                // image(x, y, 2) = 1.0; // new_color.b;
+            }
+        }
+        std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
+    }
+    std::clog << "\rDone. For reals             " << std::endl;
 }

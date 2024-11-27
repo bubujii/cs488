@@ -26,7 +26,7 @@ public:
 
     SceneNode(const SceneNode &other);
 
-    virtual Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray);
+    virtual Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray = false);
 
     virtual ~SceneNode();
 

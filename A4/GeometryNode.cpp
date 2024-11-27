@@ -1,6 +1,7 @@
 // Termm--Fall 2024
 
 #include "GeometryNode.hpp"
+#include "PhongMaterial.hpp"
 #include <glm/ext.hpp>
 
 //---------------------------------------------------------------------------------------
@@ -11,7 +12,19 @@ GeometryNode::GeometryNode(
     m_nodeType = NodeType::GeometryNode;
 }
 
-Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+GeometryNode::~GeometryNode()
+{
+    if (m_material)
+    {
+        delete m_material;
+    };
+    if (m_primitive)
+    {
+        delete m_primitive;
+    }
+}
+
+Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray)
 {
     ray.first = glm::dvec3(invtrans * glm::vec4(ray.first, 1.0));
     ray.second = glm::dvec3(invtrans * glm::vec4(ray.second, 1.0));
@@ -19,7 +32,7 @@ Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
     auto intersect_point = m_primitive->intersect(ray);
     if (intersect_point)
     {
-        intersections.push_back(new Intersection(intersect_point->first, m_material, intersect_point->second));
+        intersections.push_back(new Intersection(intersect_point->point, m_material, intersect_point->normal, intersect_point->edge_hit));
         delete intersect_point;
     }
     for (auto child : children)
@@ -33,9 +46,20 @@ Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
     {
         if (!intersection)
             continue;
+        if (shadow_ray)
+        {
+            PhongMaterial *mat = (PhongMaterial *)intersection->mat;
+            if (mat->m_transparency)
+            {
+                delete intersection;
+                continue;
+            }
+        }
         double distance = glm::distance(ray.first, intersection->point);
+
         if (distance < closest_distance)
         {
+            delete intersect;
             intersect = intersection;
             closest_distance = distance;
         }

@@ -6,24 +6,44 @@
 #include <utility>
 #include "Intersection.hpp"
 
+class PrimitiveHit
+{
+public:
+    PrimitiveHit(glm::dvec3 &point, glm::dvec3 &normal, bool edge_hit = false)
+        : point{point}, normal{normal}, edge_hit{edge_hit} {}
+    ~PrimitiveHit() {}
+    glm::dvec3 point;
+    glm::dvec3 normal;
+    bool edge_hit;
+};
+
+class MeshHit : public PrimitiveHit
+{
+public:
+    MeshHit(glm::dvec3 &point, glm::dvec3 &normal, size_t face_index)
+        : PrimitiveHit(point, normal), face_index{face_index} {}
+    ~MeshHit() {}
+    size_t face_index;
+};
+
 class Primitive
 {
 public:
     virtual ~Primitive();
-    virtual std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray);
+    virtual PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray);
 };
 
 class Sphere : public Primitive
 {
 public:
-    std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~Sphere();
 };
 
 class Cube : public Primitive
 {
 public:
-    std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~Cube();
 };
 
@@ -34,7 +54,7 @@ public:
         : m_pos(pos), m_radius(radius)
     {
     }
-    std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~NonhierSphere();
 
 private:
@@ -49,10 +69,20 @@ public:
         : m_pos(pos), m_size(size)
     {
     }
-    std::pair<glm::dvec3, glm::dvec3> *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~NonhierBox();
 
 private:
     glm::dvec3 m_pos;
     double m_size;
+};
+
+class Cylinder : public Primitive
+{
+public:
+    Cylinder()
+    {
+    }
+    PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
+    virtual ~Cylinder();
 };
