@@ -31,6 +31,7 @@ class Primitive
 public:
     virtual ~Primitive();
     virtual PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray);
+    virtual glm::dvec2 uv_map(glm::dvec3 point);
 };
 
 class Sphere : public Primitive

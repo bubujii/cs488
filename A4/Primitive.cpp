@@ -13,6 +13,11 @@ PrimitiveHit *Primitive::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
     return nullptr;
 }
 
+glm::dvec2 Primitive::uv_map(glm::dvec3 point)
+{
+    return glm::dvec2(0, 0);
+}
+
 PrimitiveHit *intersect_sphere(glm::dvec3 m_pos, double m_radius, std::pair<glm::dvec3, glm::dvec3> ray)
 {
     auto oc = m_pos - ray.first;
@@ -153,7 +158,7 @@ PrimitiveHit *Cube::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
     return intersect_cube(glm::dvec3(-0.5), 1.0, ray);
 }
 
-PrimitiveHit *Cylinder::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+PrimitiveHit *cylinder_wall_hit(std::pair<glm::dvec3, glm::dvec3> ray)
 {
     glm::dvec3 axis = glm::dvec3(0.0, 1.0, 0.0);
 
@@ -181,7 +186,7 @@ PrimitiveHit *Cylinder::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 
     double intersect_t_val = glm::min(t1, t2);
     glm::dvec3 intersect_point = ray.first + (ray.second - ray.first) * intersect_t_val;
-
+    bool hit_cylinder = false;
     if (intersect_point.y < -0.5 || intersect_point.y > 0.5)
     {
         return nullptr;
@@ -189,6 +194,69 @@ PrimitiveHit *Cylinder::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 
     glm::dvec3 normal = glm::normalize(glm::dvec3(intersect_point.x, 0.0, intersect_point.z));
     return new PrimitiveHit(intersect_point, normal);
+}
+
+PrimitiveHit *cylinder_cap_hit(std::pair<glm::dvec3, glm::dvec3> ray)
+{
+    glm::dvec3 axis = glm::dvec3(0.0, 1.0, 0.0);
+
+    double t1 = (-0.5 - ray.first.y) / (ray.second.y - ray.first.y);
+    double t2 = (0.5 - ray.first.y) / (ray.second.y - ray.first.y);
+
+    if (t1 > t2)
+    {
+        std::swap(t1, t2);
+    }
+
+    if (t1 < 0)
+    {
+        t1 = t2;
+    }
+
+    glm::dvec3 intersect_point = ray.first + (ray.second - ray.first) * t1;
+
+    if (intersect_point.x * intersect_point.x + intersect_point.z * intersect_point.z > 1)
+    {
+        return nullptr;
+    }
+
+    glm::dvec3 normal = glm::normalize(glm::dvec3(0.0, glm::sign(intersect_point.y), 0.0));
+    return new PrimitiveHit(intersect_point, normal);
+}
+
+PrimitiveHit *Cylinder::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
+{
+    PrimitiveHit *wall_hit = cylinder_wall_hit(ray);
+    PrimitiveHit *cap_hit = cylinder_cap_hit(ray);
+
+    if (wall_hit == nullptr && cap_hit == nullptr)
+    {
+        return nullptr;
+    }
+
+    if (wall_hit == nullptr)
+    {
+        return cap_hit;
+    }
+
+    if (cap_hit == nullptr)
+    {
+        return wall_hit;
+    }
+
+    double wall_t = glm::distance(ray.first, wall_hit->point);
+    double cap_t = glm::distance(ray.first, cap_hit->point);
+
+    if (wall_t < cap_t)
+    {
+        delete cap_hit;
+        return wall_hit;
+    }
+    else
+    {
+        delete wall_hit;
+        return cap_hit;
+    }
 }
 
 Cylinder::~Cylinder()

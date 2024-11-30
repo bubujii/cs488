@@ -390,17 +390,23 @@ extern "C" int gr_material_cmd(lua_State *L)
     gr_material_ud *data = (gr_material_ud *)lua_newuserdata(L, sizeof(gr_material_ud));
     data->material = 0;
 
-    double kd[3], ks[3], ke[3];
+    double kd[3], ks[3], ke[3], absorption[3];
     get_tuple(L, 1, kd, 3);
     get_tuple(L, 2, ks, 3);
     ke[0] = 0.0;
     ke[1] = 0.0;
     ke[2] = 0.0;
 
+    absorption[0] = 0.0;
+    absorption[1] = 0.0;
+    absorption[2] = 0.0;
+
     double shininess = luaL_checknumber(L, 3);
     float ior = 0.f;
     double transparency = 0.0;
     double reflectivity = 0.0;
+    double transparency_glossiness = 0.0;
+    double reflectivity_glossiness = 0.0;
 
     int arg_count = lua_gettop(L);
     if (arg_count >= 7)
@@ -411,11 +417,31 @@ extern "C" int gr_material_cmd(lua_State *L)
         reflectivity = luaL_checknumber(L, 7);
     }
 
+    if (arg_count > 8)
+    {
+        get_tuple(L, 8, absorption, 3);
+    }
+
+    if (arg_count > 10)
+    {
+        transparency_glossiness = luaL_checknumber(L, 9);
+        reflectivity_glossiness = luaL_checknumber(L, 10);
+    }
+
+    std::string texture_path = "";
+    if (arg_count > 11)
+    {
+        texture_path = luaL_checkstring(L, 11);
+    }
+
     data->material = new PhongMaterial(glm::dvec3(kd[0], kd[1], kd[2]),
                                        glm::dvec3(ks[0], ks[1], ks[2]),
                                        shininess,
                                        glm::dvec3(ke[0], ke[1], ke[2]),
-                                       ior, transparency, reflectivity);
+                                       ior, transparency, reflectivity,
+                                       glm::dvec3(absorption[0], absorption[1], absorption[2]),
+                                       transparency_glossiness, reflectivity_glossiness,
+                                       texture_path);
 
     luaL_newmetatable(L, "gr.material");
     lua_setmetatable(L, -2);

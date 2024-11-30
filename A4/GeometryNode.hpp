@@ -5,6 +5,7 @@
 #include "SceneNode.hpp"
 #include "Primitive.hpp"
 #include "Material.hpp"
+#include "Image.hpp"
 
 class GeometryNode : public SceneNode
 {

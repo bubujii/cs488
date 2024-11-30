@@ -47,7 +47,7 @@ glm::dvec3 get_refract_color(
     glm::dvec3 reflection_component = glm::dvec3(0);
     double n1 = 1.0;
     double n2 = mat->m_index_of_refraction;
-
+    bool beers_law = true;
     double eta = 1.0 / mat->m_index_of_refraction;
 
     if (glm::dot(intersect->point - ray.first, intersect->normal) > 0)
@@ -56,6 +56,7 @@ glm::dvec3 get_refract_color(
         n2 = 1.0;
         eta = 1.0 / eta;
         intersect->normal = -intersect->normal;
+        beers_law = false;
     }
 
     double R0 = glm::pow((n1 - n2) / (n1 + n2), 2);
@@ -64,7 +65,7 @@ glm::dvec3 get_refract_color(
     auto refraction_ray = glm::refract(glm::normalize(intersect->point - ray.first), glm::normalize(intersect->normal), eta);
     auto reflection_ray = glm::reflect(glm::normalize(intersect->point - ray.first), glm::normalize(intersect->normal));
     auto intersect_corrected = intersect->point + 0.001 * refraction_ray;
-    double epsilon = 0.00000001;
+    double epsilon = 0.01;
 
     if (R > 1.0 - epsilon || (mat->m_reflectivity == 1.0 && mat->m_transparency == 0.0))
         R = 1.0;
@@ -73,28 +74,111 @@ glm::dvec3 get_refract_color(
 
     if (R < 1.0 && !glm::all(glm::isnan(refraction_ray)))
     {
-        refraction_component = get_color(
-            root,
-            std::make_pair(intersect_corrected, intersect->point + refraction_ray),
-            ambient,
-            lights,
-            depth + 1,
-            up);
+        auto refract_ray = std::make_pair(intersect_corrected, intersect->point + refraction_ray);
+        if (mat->m_transparency_glossiness && depth == 0)
+        {
+            auto distant_circle_center = intersect->point + glm::normalize(refraction_ray);
+            auto distant_circle_radius = glm::atan(glm::radians(mat->m_transparency_glossiness) / 2);
+            auto normal = intersect->normal;
+            glm::dvec3 tangent = glm::dvec3(0);
+            glm::dvec3 bitangent = glm::dvec3(0);
+            if (glm::abs(refraction_ray.x) > glm::abs(refraction_ray.z))
+            {
+                tangent = glm::dvec3(-refraction_ray.y, refraction_ray.x, 0);
+            }
+            else
+            {
+                tangent = glm::dvec3(0, -refraction_ray.z, refraction_ray.y);
+            }
+            bitangent = glm::cross(refraction_ray, tangent);
+            glm::dvec3 refract_color = glm::dvec3(0);
+            double rays_to_cast = 100.0;
+            for (int i = 0; i < rays_to_cast; ++i)
+            {
+                double radius = rand() % 1000 / 1000.0 * distant_circle_radius;
+                double angle = rand() % 1000 / 1000.0 * 2 * M_PI;
+
+                glm::dvec3 offset = radius * (glm::cos(angle) * tangent + glm::sin(angle) * bitangent) + distant_circle_center;
+
+                refract_ray = std::make_pair(intersect_corrected, offset);
+                refract_color += get_color(
+                    root,
+                    refract_ray,
+                    ambient,
+                    lights,
+                    depth + 1,
+                    up);
+            }
+            refraction_component = refract_color / rays_to_cast;
+        }
+        else
+        {
+            refraction_component = get_color(
+                root,
+                refract_ray,
+                ambient,
+                lights,
+                depth + 1,
+                up);
+        }
+        auto refract_intersect = root->intersect(refract_ray);
+        if (beers_law && refract_intersect)
+        {
+            refraction_component *= glm::exp(-mat->m_absorption * glm::distance(intersect->point, refract_intersect->point));
+        }
     }
     else
     {
         refraction_component = get_background_color(up, ray);
     }
-    if (R > 0)
+    if (R > 0 && !glm::all(glm::isnan(reflection_ray)))
     {
-        intersect_corrected = intersect->point + 0.001 * reflection_ray;
-        reflection_component = get_color(
-            root,
-            std::make_pair(intersect_corrected, intersect->point + reflection_ray),
-            ambient,
-            lights,
-            depth + 1,
-            up);
+        if (mat->m_reflectivity_glossiness && depth == 0)
+        {
+            auto distant_circle_center = intersect->point + glm::normalize(reflection_ray);
+            auto distant_circle_radius = glm::atan(mat->m_reflectivity_glossiness);
+            glm::dvec3 tangent = glm::dvec3(0);
+            glm::dvec3 bitangent = glm::dvec3(0);
+            if (glm::abs(reflection_ray.x) > glm::abs(reflection_ray.z))
+            {
+                tangent = glm::dvec3(-reflection_ray.y, reflection_ray.x, 0);
+            }
+            else
+            {
+                tangent = glm::dvec3(0, -reflection_ray.z, reflection_ray.y);
+            }
+            bitangent = glm::cross(reflection_ray, tangent);
+            glm::dvec3 refract_color = glm::dvec3(0);
+            double rays_to_cast = 100.0;
+            for (int i = 0; i < rays_to_cast; ++i)
+            {
+                double radius = (rand() % 1000) / 1000.0 * distant_circle_radius;
+                double angle = (rand() % 1000) / 1000.0 * 2 * M_PI;
+
+                glm::dvec3 offset = radius * (glm::cos(angle) * tangent + glm::sin(angle) * bitangent);
+                intersect_corrected = intersect->point + 0.001 * reflection_ray;
+                auto reflect_ray = std::make_pair(intersect_corrected, distant_circle_center + offset);
+                refract_color += get_color(
+                    root,
+                    reflect_ray,
+                    ambient,
+                    lights,
+                    depth + 1,
+                    up);
+            }
+            reflection_component = refract_color / rays_to_cast;
+        }
+        else
+        {
+            intersect_corrected = intersect->point + 0.001 * reflection_ray;
+            reflection_component = get_color(
+                root,
+                std::make_pair(intersect_corrected, intersect->point + reflection_ray),
+                ambient,
+                lights,
+                depth + 1,
+                up);
+        }
     }
     else
     {
@@ -125,7 +209,7 @@ glm::dvec3 get_color(
         glm::dvec3 refraction_component = glm::dvec3(0);
         glm::dvec3 normal = glm::normalize(glm::dvec3(intersect->normal));
 
-        if (((mat->m_index_of_refraction && mat->m_transparency) || mat->m_reflectivity) && depth < 8)
+        if (((mat->m_index_of_refraction && mat->m_transparency) || mat->m_reflectivity) && depth < 4)
         {
             refraction_component = get_refract_color(intersect, root, ray, ambient, lights, depth, up);
         }
@@ -290,24 +374,24 @@ void A4_Render(
     {
         for (uint x = 0; x < w; ++x)
         {
-            if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
-            {
-                // glm::dvec3 new_color = glm::dvec3(0);
-                // for (int p_count = 0; p_count < 20; ++p_count)
-                // {
-                //     glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
-                //     double x_jitter = ((rand() % 100) - 100) / 100.0;
-                //     double y_jitter = ((rand() % 100) - 100) / 100.0;
-                //     pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
-                //     std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
-                //     auto color = get_color(root, ray, ambient, lights, 0, up);
-                //     new_color += color;
-                // }
-                // new_color /= 20.0;
-                // image(x, y, 0) = 1.0; // new_color.r;
-                // image(x, y, 1) = 1.0; // new_color.g;
-                // image(x, y, 2) = 1.0; // new_color.b;
-            }
+            // if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
+            // {
+            //     glm::dvec3 new_color = glm::dvec3(0);
+            //     for (int p_count = 0; p_count < 20; ++p_count)
+            //     {
+            //         glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
+            //         double x_jitter = ((rand() % 100) - 100) / 100.0;
+            //         double y_jitter = ((rand() % 100) - 100) / 100.0;
+            //         pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
+            //         std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
+            //         auto color = get_color(root, ray, ambient, lights, 0, up);
+            //         new_color += color;
+            //     }
+            //     new_color /= 20.0;
+            //     image(x, y, 0) = new_color.r;
+            //     image(x, y, 1) = new_color.g;
+            //     image(x, y, 2) = new_color.b;
+            // }
         }
         std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
     }

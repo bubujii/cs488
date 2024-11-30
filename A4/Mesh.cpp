@@ -14,6 +14,7 @@ Mesh::Mesh(const std::string &fname)
     std::string code;
     double vx, vy, vz;
     size_t s1, s2, s3;
+    size_t n1, n2, n3;
 
     std::ifstream ifs((fname).c_str());
     if (!ifs)
@@ -56,10 +57,34 @@ Mesh::Mesh(const std::string &fname)
 
         else if (code == "f")
         {
+            if (m_normals.size() > 0)
+            {
+                char dummy;
+
+                ifs >> s1;
+                ifs >> dummy >> dummy >> n1;
+                ifs >> s2;
+                ifs >> dummy >> dummy >> n2;
+                ifs >> s3;
+                ifs >> dummy >> dummy >> n3;
+                std::cout << s1 << " " << n1 << " " << s2 << " " << n2 << " " << s3 << " " << n3 << std::endl;
+                m_faces.push_back(Triangle(s1 - 1, s2 - 1, s3 - 1, n1 - 1, n2 - 1, n3 - 1));
+                continue;
+            }
             ifs >> s1 >> s2 >> s3;
             m_faces.push_back(Triangle(s1 - 1, s2 - 1, s3 - 1));
         }
+        else if (code == "vn")
+        {
+            ifs >> vx >> vy >> vz;
+            m_normals.push_back(glm::dvec3(vx, vy, vz));
+        }
     }
+    plane_bottom_left = lower_left;
+    plane_bottom_left.y = 0;
+    plane_top_right = upper_right;
+    plane_top_right.y = 0;
+
     glm::dvec3 corner_distance = upper_right - lower_left;
     if (corner_distance.x == 0)
     {
@@ -77,21 +102,29 @@ Mesh::Mesh(const std::string &fname)
         lower_left.z -= 0.01;
     }
     bounding_box.scale(corner_distance);
+
+    auto center = (upper_right + lower_left) / 2.0;
+    bounding_box.translate(center);
     // bounding_box.translate(lower_left);
 
     std::cout
         << "Loaded " << m_vertices.size() << " vertices." << std::endl;
+    std::cout
+        << "Loaded " << m_faces.size() << " faces." << std::endl;
+    std::cout
+        << "Loaded " << m_normals.size() << " normals." << std::endl;
 }
 
 PrimitiveHit *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
+    // std::cout << "Intersecting Mesh" << std::endl;
     auto bounding_intersect = bounding_box.intersect(ray);
     if (!bounding_intersect)
     {
         return nullptr;
     }
 #ifdef RENDER_BOUNDING_VOLUMES
-    std::pair<glm::dvec3, glm::dvec3> *bounding_intersect_pair = new std::pair<glm::dvec3, glm::dvec3>(bounding_intersect->point, bounding_intersect->normal);
+    PrimitiveHit *bounding_intersect_pair = new PrimitiveHit(bounding_intersect->point, bounding_intersect->normal);
     delete bounding_intersect;
     return bounding_intersect_pair;
 #endif
@@ -152,23 +185,29 @@ PrimitiveHit *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
             v1_hit = v1;
             v2_hit = v2;
             v3_hit = v3;
+            if (m_normals.size() > 0)
+            {
+                auto n1 = m_normals[m_faces[i].n1];
+                auto n2 = m_normals[m_faces[i].n2];
+                auto n3 = m_normals[m_faces[i].n3];
+                normal = glm::normalize(n1 * (1 - u - v) + n2 * u + n3 * v);
+            }
         }
     }
     if (intersected)
     {
-        // auto ray_1 = intersect_point - v1_hit;
-        // auto ray_2 = intersect_point - v2_hit;
-        // double distance_e1 = glm::length(intersect_point - glm::dot(ray_1, v2_hit - v1_hit) * (v2_hit - v1_hit));
-        // double distance_e2 = glm::length(intersect_point - glm::dot(ray_1, v3_hit - v1_hit) * (v3_hit - v1_hit));
-        // double distance_e3 = glm::length(intersect_point - glm::dot(ray_2, v3_hit - v2_hit) * (v3_hit - v2_hit));
-        // double max_distance = 1;
-        // if (distance_e1 < max_distance || distance_e2 < max_distance || distance_e3 < max_distance)
-        // {
-        //     return new PrimitiveHit(intersect_point, normal, true);
-        // }
         return new PrimitiveHit(intersect_point, normal);
     }
     return nullptr;
+}
+
+glm::dvec2 Mesh::uv_map(glm::dvec3 point)
+{
+    // project onto the xz plane for now and stop complaining
+    glm::dvec3 midpoint = (plane_bottom_left + plane_top_right) / 2.0;
+    std::cout << "pre-projection" << std::endl;
+    std::cout << glm::to_string(point + plane_top_right) << std::endl;
+    return (glm::dvec2(point.x, point.z) + glm::dvec2(plane_top_right.x, plane_top_right.z)) * 0.5;
 }
 
 std::ostream &operator<<(std::ostream &out, const Mesh &mesh)

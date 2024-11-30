@@ -4,6 +4,32 @@
 #include "PhongMaterial.hpp"
 #include <glm/ext.hpp>
 
+Material *getTextureMaterial(Material *mat, glm::dvec2 uv)
+{
+    if (!mat)
+    {
+        return nullptr;
+    }
+    // std::cout << "material exists I guess" << std::endl;
+    PhongMaterial *phongMat = (PhongMaterial *)mat;
+    Image *texture = phongMat->m_texture;
+    if (!texture)
+    {
+        return phongMat;
+    }
+    std::cout << "getting colour" << std::endl;
+    glm::dvec3 color;
+    uv.x = glm::floor(uv.x * texture->width());
+    uv.y = glm::floor(uv.y * texture->height());
+    std::cout << "UV: " << glm::to_string(uv) << std::endl;
+    color.r = (*texture)(uv.x, uv.y, 0);
+    color.g = (*texture)(uv.x, uv.y, 1);
+    color.b = (*texture)(uv.x, uv.y, 2);
+    std::cout << "Color: " << glm::to_string(color) << std::endl;
+    phongMat->m_kd = color;
+    return phongMat;
+}
+
 //---------------------------------------------------------------------------------------
 GeometryNode::GeometryNode(
     const std::string &name, Primitive *prim, Material *mat)
@@ -17,7 +43,7 @@ GeometryNode::~GeometryNode()
     if (m_material)
     {
         delete m_material;
-    };
+    }
     if (m_primitive)
     {
         delete m_primitive;
@@ -32,7 +58,12 @@ Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray, boo
     auto intersect_point = m_primitive->intersect(ray);
     if (intersect_point)
     {
-        intersections.push_back(new Intersection(intersect_point->point, m_material, intersect_point->normal, intersect_point->edge_hit));
+        intersections.push_back(new Intersection(
+            intersect_point->point,
+            getTextureMaterial(m_material, m_primitive->uv_map(intersect_point->point)),
+            intersect_point->normal,
+            intersect_point->edge_hit));
+
         delete intersect_point;
     }
     for (auto child : children)
