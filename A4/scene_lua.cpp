@@ -50,12 +50,14 @@
 
 #include "Light.hpp"
 #include "Mesh.hpp"
+#include "FractalMountain.hpp"
 #include "GeometryNode.hpp"
 #include "JointNode.hpp"
 #include "Primitive.hpp"
 #include "Material.hpp"
 #include "PhongMaterial.hpp"
 #include "A4.hpp"
+#include "LTree.hpp"
 
 typedef std::map<std::string, Mesh *> MeshMap;
 static MeshMap mesh_map;
@@ -219,7 +221,19 @@ extern "C" int gr_cylinder_cmd(lua_State *L)
     data->node = 0;
 
     const char *name = luaL_checkstring(L, 1);
-    data->node = new GeometryNode(name, new Cylinder());
+
+    int args = lua_gettop(L);
+
+    if (args > 2)
+    {
+        double radius = luaL_checknumber(L, 2);
+        double height = luaL_checknumber(L, 3);
+        data->node = new GeometryNode(name, new Cylinder(radius, height));
+    }
+    else
+    {
+        data->node = new GeometryNode(name, new Cylinder());
+    }
 
     luaL_getmetatable(L, "gr.node");
     lua_setmetatable(L, -2);
@@ -302,6 +316,78 @@ extern "C" int gr_mesh_cmd(lua_State *L)
     }
 
     data->node = new GeometryNode(name, mesh);
+
+    luaL_getmetatable(L, "gr.node");
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
+
+extern "C" int gr_mountain_cmd(lua_State *L)
+{
+    GRLUA_DEBUG_CALL;
+
+    gr_node_ud *data = (gr_node_ud *)lua_newuserdata(L, sizeof(gr_node_ud));
+    data->node = 0;
+
+    const char *name = luaL_checkstring(L, 1);
+
+    int grid_size = luaL_checknumber(L, 2);
+
+    double roughness = luaL_checknumber(L, 3);
+
+    FractalMountain *mesh = new FractalMountain(grid_size, roughness);
+
+    data->node = new GeometryNode(name, mesh);
+
+    luaL_getmetatable(L, "gr.node");
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
+
+extern "C" int gr_ltree_cmd(lua_State *L)
+{
+    GRLUA_DEBUG_CALL;
+
+    gr_node_ud *data = (gr_node_ud *)lua_newuserdata(L, sizeof(gr_node_ud));
+    data->node = 0;
+
+    const char *name = luaL_checkstring(L, 1);
+
+    luaL_checktype(L, 2, LUA_TTABLE);
+    int rule_count = int(lua_rawlen(L, 2));
+
+    luaL_argcheck(L, rule_count >= 1, 2, "Table of rules expected");
+    std::map<char, std::string> rules;
+    for (int i = 1; i <= rule_count; i++)
+    {
+        lua_rawgeti(L, 2, i);
+        luaL_checktype(L, -1, LUA_TTABLE);
+        luaL_argcheck(L, lua_rawlen(L, -1) == 2, 2, "Rule must be a 2-tuple");
+        lua_rawgeti(L, -1, 1);
+        luaL_argcheck(L, lua_isstring(L, -1), 2, "Rule must be a 2-tuple of strings");
+        const char *key = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        lua_rawgeti(L, -1, 2);
+        luaL_argcheck(L, lua_isstring(L, -1), 2, "Rule must be a 2-tuple of strings");
+        const char *value = lua_tostring(L, -1);
+        lua_pop(L, 1);
+        rules[key[0]] = value;
+        lua_pop(L, 1);
+    }
+
+    int depth = luaL_checknumber(L, 3);
+
+    double angle = luaL_checknumber(L, 4);
+
+    double height = luaL_checknumber(L, 5);
+
+    double radius = luaL_checknumber(L, 6);
+
+    LTree ltree = LTree("F", rules, depth, angle, height, radius);
+
+    data->node = ltree.render_tree();
 
     luaL_getmetatable(L, "gr.node");
     lua_setmetatable(L, -2);
@@ -434,6 +520,12 @@ extern "C" int gr_material_cmd(lua_State *L)
         texture_path = luaL_checkstring(L, 11);
     }
 
+    std::string normal_map_path = "";
+    if (arg_count > 12)
+    {
+        normal_map_path = luaL_checkstring(L, 12);
+    }
+
     data->material = new PhongMaterial(glm::dvec3(kd[0], kd[1], kd[2]),
                                        glm::dvec3(ks[0], ks[1], ks[2]),
                                        shininess,
@@ -441,7 +533,7 @@ extern "C" int gr_material_cmd(lua_State *L)
                                        ior, transparency, reflectivity,
                                        glm::dvec3(absorption[0], absorption[1], absorption[2]),
                                        transparency_glossiness, reflectivity_glossiness,
-                                       texture_path);
+                                       texture_path, normal_map_path);
 
     luaL_newmetatable(L, "gr.material");
     lua_setmetatable(L, -2);
@@ -487,6 +579,29 @@ extern "C" int gr_node_set_material_cmd(lua_State *L)
     Material *material = matdata->material;
 
     self->setMaterial(material);
+
+    return 0;
+}
+
+extern "C" int gr_node_set_texture_tile_cmd(lua_State *L)
+{
+    GRLUA_DEBUG_CALL;
+
+    gr_node_ud *selfdata = (gr_node_ud *)luaL_checkudata(L, 1, "gr.node");
+    luaL_argcheck(L, selfdata != 0, 1, "Node expected");
+
+    GeometryNode *self = dynamic_cast<GeometryNode *>(selfdata->node);
+
+    luaL_argcheck(L, self != 0, 1, "Geometry node expected");
+
+    double tiling[2];
+
+    for (int i = 0; i < 2; i++)
+    {
+        tiling[i] = luaL_checknumber(L, i + 2);
+    }
+
+    self->setTextureTiling(glm::dvec2(tiling[0], tiling[1]));
 
     return 0;
 }
@@ -593,6 +708,8 @@ static const luaL_Reg grlib_functions[] = {
     {"nh_sphere", gr_nh_sphere_cmd},
     {"nh_box", gr_nh_box_cmd},
     {"mesh", gr_mesh_cmd},
+    {"mountain", gr_mountain_cmd},
+    {"ltree", gr_ltree_cmd},
     {"light", gr_light_cmd},
     {"render", gr_render_cmd},
     {0, 0}};
@@ -613,6 +730,7 @@ static const luaL_Reg grlib_node_methods[] = {
     {"__gc", gr_node_gc_cmd},
     {"add_child", gr_node_add_child_cmd},
     {"set_material", gr_node_set_material_cmd},
+    {"set_texture_tiling", gr_node_set_texture_tile_cmd},
     {"scale", gr_node_scale_cmd},
     {"rotate", gr_node_rotate_cmd},
     {"translate", gr_node_translate_cmd},

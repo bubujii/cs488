@@ -17,7 +17,9 @@ public:
     Intersection *intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray = false) override;
 
     void setMaterial(Material *material);
+    void setTextureTiling(glm::dvec2 tiling);
 
     Material *m_material;
     Primitive *m_primitive;
+    glm::dvec2 m_texture_tiling;
 };

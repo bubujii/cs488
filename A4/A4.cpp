@@ -9,9 +9,17 @@
 glm::dvec3 get_background_color(const glm::dvec3 &up, std::pair<glm::dvec3, glm::dvec3> ray)
 {
 
-    glm::dvec3 start_color = glm::dvec3(231, 154, 255) / 255.0;
-    glm::dvec3 end_color = glm::dvec3(193.0 / 255.0, 9.0 / 255.0, 0);
+    glm::dvec3 start_color = glm::dvec3(59, 222, 255) / 255.0; // glm::dvec3(231, 154, 255) / 255.0;
+    glm::dvec3 end_color = glm::dvec3(255, 59, 167) / 255.0;   // glm::dvec3(4, 21, 120) / 255.0;
     double lerp_param = (glm::dot(up, glm::normalize(ray.second - ray.first)) + 1) / 2;
+    if (lerp_param > 0.5)
+    {
+        lerp_param = 1 - glm::pow(-2 * lerp_param + 2, 5) / 2;
+    }
+    else
+    {
+        lerp_param = 16 * glm::pow(lerp_param, 5);
+    }
     return glm::mix(end_color, start_color, lerp_param);
 }
 
@@ -75,7 +83,7 @@ glm::dvec3 get_refract_color(
     if (R < 1.0 && !glm::all(glm::isnan(refraction_ray)))
     {
         auto refract_ray = std::make_pair(intersect_corrected, intersect->point + refraction_ray);
-        if (mat->m_transparency_glossiness && depth == 0)
+        if (mat->m_transparency_glossiness && depth <= 1)
         {
             auto distant_circle_center = intersect->point + glm::normalize(refraction_ray);
             auto distant_circle_radius = glm::atan(glm::radians(mat->m_transparency_glossiness) / 2);
@@ -92,7 +100,7 @@ glm::dvec3 get_refract_color(
             }
             bitangent = glm::cross(refraction_ray, tangent);
             glm::dvec3 refract_color = glm::dvec3(0);
-            double rays_to_cast = 100.0;
+            double rays_to_cast = 20.0;
             for (int i = 0; i < rays_to_cast; ++i)
             {
                 double radius = rand() % 1000 / 1000.0 * distant_circle_radius;
@@ -133,7 +141,7 @@ glm::dvec3 get_refract_color(
     }
     if (R > 0 && !glm::all(glm::isnan(reflection_ray)))
     {
-        if (mat->m_reflectivity_glossiness && depth == 0)
+        if (mat->m_reflectivity_glossiness && depth <= 1)
         {
             auto distant_circle_center = intersect->point + glm::normalize(reflection_ray);
             auto distant_circle_radius = glm::atan(mat->m_reflectivity_glossiness);
@@ -149,7 +157,7 @@ glm::dvec3 get_refract_color(
             }
             bitangent = glm::cross(reflection_ray, tangent);
             glm::dvec3 refract_color = glm::dvec3(0);
-            double rays_to_cast = 100.0;
+            double rays_to_cast = 20.0;
             for (int i = 0; i < rays_to_cast; ++i)
             {
                 double radius = (rand() % 1000) / 1000.0 * distant_circle_radius;
@@ -351,6 +359,7 @@ void A4_Render(
     glm::dvec3 vp_upper_left = eye + focal_length * glm::normalize(view - eye) - v_right / 2.0 - v_down / 2.0;
     glm::dvec3 pixel00 = vp_upper_left + 0.5 * (pixel_delta_x + pixel_delta_y);
     glm::dvec3 forward = glm::normalize(view - eye);
+    glm::dvec3 up_corrected = glm::normalize(up - glm::dot(up, forward) * forward);
     for (uint y = 0; y < h; ++y)
     {
         for (uint x = 0; x < w; ++x)
@@ -359,7 +368,7 @@ void A4_Render(
             glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
 
             std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
-            auto color = get_color(root, ray, ambient, lights, 0, up);
+            auto color = get_color(root, ray, ambient, lights, 0, up_corrected);
 
             image(x, y, 0) = color.r;
             image(x, y, 1) = color.g;
@@ -369,30 +378,30 @@ void A4_Render(
     }
     Image unaliased_image = image;
     std::clog << "\rDone. On to Anti-Aliasing               " << std::endl;
-    double threshold = 0.10;
+    double threshold = 0.1;
     for (uint y = 0; y < h; ++y)
     {
-        for (uint x = 0; x < w; ++x)
-        {
-            // if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
-            // {
-            //     glm::dvec3 new_color = glm::dvec3(0);
-            //     for (int p_count = 0; p_count < 20; ++p_count)
-            //     {
-            //         glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
-            //         double x_jitter = ((rand() % 100) - 100) / 100.0;
-            //         double y_jitter = ((rand() % 100) - 100) / 100.0;
-            //         pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
-            //         std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
-            //         auto color = get_color(root, ray, ambient, lights, 0, up);
-            //         new_color += color;
-            //     }
-            //     new_color /= 20.0;
-            //     image(x, y, 0) = new_color.r;
-            //     image(x, y, 1) = new_color.g;
-            //     image(x, y, 2) = new_color.b;
-            // }
-        }
+        // for (uint x = 0; x < w; ++x)
+        // {
+        //     if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
+        //     {
+        //         glm::dvec3 new_color = glm::dvec3(0);
+        //         for (int p_count = 0; p_count < 20; ++p_count)
+        //         {
+        //             glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
+        //             double x_jitter = ((rand() % 100) - 100) / 100.0;
+        //             double y_jitter = ((rand() % 100) - 100) / 100.0;
+        //             pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
+        //             std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
+        //             auto color = get_color(root, ray, ambient, lights, 0, up);
+        //             new_color += color;
+        //         }
+        //         new_color /= 20.0;
+        //         image(x, y, 0) = new_color.r;
+        //         image(x, y, 1) = new_color.g;
+        //         image(x, y, 2) = new_color.b;
+        //     }
+        // }
         std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
     }
     std::clog << "\rDone. For reals             " << std::endl;

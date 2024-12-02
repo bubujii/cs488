@@ -146,6 +146,11 @@ std::ostream &operator<<(std::ostream &os, const SceneNode &node)
     os << "id:" << node.m_nodeId;
 
     os << "]\n";
+
+    for (const SceneNode *child : node.children)
+    {
+        os << "  " << *child;
+    }
     return os;
 }
 

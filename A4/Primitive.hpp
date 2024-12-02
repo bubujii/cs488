@@ -82,8 +82,18 @@ class Cylinder : public Primitive
 {
 public:
     Cylinder()
+        : m_radius(1.0), m_height(1.0), m_origin_is_bottom(false)
+    {
+    }
+    Cylinder(double radius, double height, bool origin_is_bottom = true)
+        : m_radius(radius), m_height(height), m_origin_is_bottom(origin_is_bottom)
     {
     }
     PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     virtual ~Cylinder();
+
+private:
+    double m_radius;
+    double m_height;
+    bool m_origin_is_bottom;
 };

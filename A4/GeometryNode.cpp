@@ -4,30 +4,71 @@
 #include "PhongMaterial.hpp"
 #include <glm/ext.hpp>
 
-Material *getTextureMaterial(Material *mat, glm::dvec2 uv)
+Material *getTextureMaterial(Material *mat, glm::dvec2 uv, glm::dvec2 tiling = glm::dvec2(1.0, 1.0))
 {
+    // std::cout << "getTextureMaterial" << std::endl;
     if (!mat)
     {
+        // std::cout << "material does not exist" << std::endl;
         return nullptr;
     }
     // std::cout << "material exists I guess" << std::endl;
     PhongMaterial *phongMat = (PhongMaterial *)mat;
     Image *texture = phongMat->m_texture;
+    // std::cout << "got texture" << std::endl;
+    std::cout << texture << std::endl;
+    // std::cout << "check texture" << std::endl;
     if (!texture)
     {
+        // std::cout << "no texture" << std::endl;
         return phongMat;
     }
-    std::cout << "getting colour" << std::endl;
+    // std::cout << "texture exists" << std::endl;
     glm::dvec3 color;
+    // std::cout << "uv: " << glm::to_string(uv) << std::endl;
+    // std::cout << "tiling: " << glm::to_string(tiling) << std::endl;
+    uv.x = std::fmod(uv.x, 1.0 / tiling.x) * tiling.x;
+    uv.y = std::fmod(uv.y, 1.0 / tiling.y) * tiling.y;
+    // std::cout << "uv: " << glm::to_string(uv) << std::endl;
     uv.x = glm::floor(uv.x * texture->width());
     uv.y = glm::floor(uv.y * texture->height());
-    std::cout << "UV: " << glm::to_string(uv) << std::endl;
+    uv.x = glm::clamp(uv.x, 0.0, (double)(texture->width() - 1));
+    uv.y = glm::clamp(uv.y, 0.0, (double)(texture->height() - 1));
     color.r = (*texture)(uv.x, uv.y, 0);
     color.g = (*texture)(uv.x, uv.y, 1);
     color.b = (*texture)(uv.x, uv.y, 2);
-    std::cout << "Color: " << glm::to_string(color) << std::endl;
     phongMat->m_kd = color;
+    // std::cout << "getTextureMaterial done" << std::endl;
     return phongMat;
+}
+
+glm::dvec3 getNormal(Material *mat, glm::dvec2 uv, glm::dvec3 cur_normal, glm::dvec2 tiling = glm::dvec2(1.0, 1.0))
+{
+    if (!mat)
+    {
+        return cur_normal;
+    }
+    PhongMaterial *phongMat = (PhongMaterial *)mat;
+    Image *normal_map = phongMat->m_normal_map;
+    if (!normal_map)
+    {
+        return cur_normal;
+    }
+    glm::dvec3 normal;
+    uv.x = std::fmod(uv.x, 1.0 / tiling.x) * tiling.x;
+    uv.y = std::fmod(uv.y, 1.0 / tiling.y) * tiling.y;
+    uv.x = glm::clamp(uv.x, 0.0, 1.0);
+    uv.y = glm::clamp(uv.y, 0.0, 1.0);
+    uv.x = glm::floor(uv.x * normal_map->width());
+    uv.y = glm::floor(uv.y * normal_map->height());
+    uv.x = glm::clamp(uv.x, 0.0, (double)(normal_map->width() - 1));
+    uv.y = glm::clamp(uv.y, 0.0, (double)(normal_map->height() - 1));
+    normal.r = glm::round((*normal_map)(uv.x, uv.y, 0) * 100) / 100;
+    normal.g = glm::round((*normal_map)(uv.x, uv.y, 2) * 100) / 100;
+    normal.b = glm::round((*normal_map)(uv.x, uv.y, 1) * 100) / 100;
+
+    normal = 2.0 * normal - glm::dvec3(1.0);
+    return glm::normalize(normal);
 }
 
 //---------------------------------------------------------------------------------------
@@ -36,6 +77,7 @@ GeometryNode::GeometryNode(
     : SceneNode(name), m_material(mat), m_primitive(prim)
 {
     m_nodeType = NodeType::GeometryNode;
+    m_texture_tiling = glm::dvec2(1.0, 1.0);
 }
 
 GeometryNode::~GeometryNode()
@@ -52,16 +94,19 @@ GeometryNode::~GeometryNode()
 
 Intersection *GeometryNode::intersect(std::pair<glm::dvec3, glm::dvec3> ray, bool shadow_ray)
 {
+    auto save_ray = ray;
     ray.first = glm::dvec3(invtrans * glm::vec4(ray.first, 1.0));
     ray.second = glm::dvec3(invtrans * glm::vec4(ray.second, 1.0));
     std::vector<Intersection *> intersections;
     auto intersect_point = m_primitive->intersect(ray);
     if (intersect_point)
     {
+        glm::dvec2 uv = m_primitive->uv_map(intersect_point->point);
+        glm::dvec3 normal = getNormal(m_material, uv, intersect_point->normal, m_texture_tiling);
         intersections.push_back(new Intersection(
             intersect_point->point,
-            getTextureMaterial(m_material, m_primitive->uv_map(intersect_point->point)),
-            intersect_point->normal,
+            getTextureMaterial(m_material, uv, m_texture_tiling),
+            normal,
             intersect_point->edge_hit));
 
         delete intersect_point;
@@ -121,4 +166,21 @@ void GeometryNode::setMaterial(Material *mat)
     //     crash the program.
 
     m_material = mat;
+    for (auto child : children)
+    {
+        GeometryNode *gChild = dynamic_cast<GeometryNode *>(child);
+        if (gChild)
+        {
+            if (gChild->m_material)
+            {
+                continue;
+            }
+            gChild->setMaterial(mat);
+        }
+    }
+}
+
+void GeometryNode::setTextureTiling(glm::dvec2 tiling)
+{
+    m_texture_tiling = tiling;
 }

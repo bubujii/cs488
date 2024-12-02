@@ -46,10 +46,11 @@ class Mesh : public Primitive
 {
 public:
     Mesh(const std::string &fname);
+    Mesh();
     PrimitiveHit *intersect(std::pair<glm::dvec3, glm::dvec3> ray) override;
     glm::dvec2 uv_map(glm::dvec3 point) override;
 
-private:
+protected:
     std::vector<glm::dvec3> m_vertices;
     std::vector<glm::dvec3> m_normals;
     std::vector<Triangle> m_faces;

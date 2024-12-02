@@ -8,6 +8,10 @@
 // #include "cs488-framework/ObjFileDecoder.hpp"
 #include "Mesh.hpp"
 
+Mesh::Mesh() : bounding_box(GeometryNode("Bounding Box", new Cube()))
+{
+}
+
 Mesh::Mesh(const std::string &fname)
     : m_vertices(), m_faces(), bounding_box(GeometryNode("Bounding Box", new Cube()))
 {
@@ -205,8 +209,8 @@ glm::dvec2 Mesh::uv_map(glm::dvec3 point)
 {
     // project onto the xz plane for now and stop complaining
     glm::dvec3 midpoint = (plane_bottom_left + plane_top_right) / 2.0;
-    std::cout << "pre-projection" << std::endl;
-    std::cout << glm::to_string(point + plane_top_right) << std::endl;
+    // std::cout << "pre-projection" << std::endl;
+    // std::cout << glm::to_string(point + plane_top_right) << std::endl;
     return (glm::dvec2(point.x, point.z) + glm::dvec2(plane_top_right.x, plane_top_right.z)) * 0.5;
 }
 

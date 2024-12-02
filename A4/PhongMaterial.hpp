@@ -15,6 +15,7 @@ public:
     PhongMaterial(const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, const glm::dvec3 &ke, double index_of_refraction, double transparency = 0.0, double reflectivity = 0.0, glm::dvec3 absorption = glm::dvec3(0));
     PhongMaterial(const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, const glm::dvec3 &ke, double index_of_refraction, double transparency = 0.0, double reflectivity = 0.0, glm::dvec3 absorption = glm::dvec3(0), double transparency_glossiness = 0, double reflectivity_glossiness = 0);
     PhongMaterial(const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, const glm::dvec3 &ke, double index_of_refraction, double transparency = 0.0, double reflectivity = 0.0, glm::dvec3 absorption = glm::dvec3(0), double transparency_glossiness = 0, double reflectivity_glossiness = 0, std::string texture_path = "");
+    PhongMaterial(const glm::dvec3 &kd, const glm::dvec3 &ks, double shininess, const glm::dvec3 &ke, double index_of_refraction, double transparency = 0.0, double reflectivity = 0.0, glm::dvec3 absorption = glm::dvec3(0), double transparency_glossiness = 0, double reflectivity_glossiness = 0, std::string texture_path = "", std::string normal_map_path = "");
     virtual ~PhongMaterial();
 
     glm::dvec3 m_kd;
@@ -29,4 +30,5 @@ public:
     double m_reflectivity_glossiness;
     glm::dvec3 m_absorption;
     Image *m_texture = nullptr;
+    Image *m_normal_map = nullptr;
 };
