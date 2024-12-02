@@ -97,7 +97,7 @@ scene_root:add_child(monkey_head_left)
 column_left = gr.cylinder('column')
 column_left:scale(3, 60, 3)
 column_left:translate(50, -20, 37)
-column_left:set_material(column_mat)
+column_left:set_material(gloss)
 scene_root:add_child(column_left)
 
 
@@ -111,7 +111,7 @@ scene_root:add_child(monkey_head_right)
 column_right = gr.cylinder('column_right')
 column_right:scale(3, 60, 3)
 column_right:translate(-50, -20, 37)
-column_right:set_material(column_mat)
+column_right:set_material(gloss)
 scene_root:add_child(column_right)
 
 
