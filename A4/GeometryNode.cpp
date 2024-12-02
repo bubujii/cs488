@@ -16,7 +16,7 @@ Material *getTextureMaterial(Material *mat, glm::dvec2 uv, glm::dvec2 tiling = g
     PhongMaterial *phongMat = (PhongMaterial *)mat;
     Image *texture = phongMat->m_texture;
     // std::cout << "got texture" << std::endl;
-    std::cout << texture << std::endl;
+    // std::cout << texture << std::endl;
     // std::cout << "check texture" << std::endl;
     if (!texture)
     {
