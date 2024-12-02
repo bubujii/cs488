@@ -9,8 +9,8 @@
 glm::dvec3 get_background_color(const glm::dvec3 &up, std::pair<glm::dvec3, glm::dvec3> ray)
 {
 
-    glm::dvec3 start_color = glm::dvec3(1, 22, 138) / 255.0; // glm::dvec3(231, 154, 255) / 255.0;
-    glm::dvec3 end_color = glm::dvec3(255, 59, 167) / 255.0; // glm::dvec3(4, 21, 120) / 255.0;
+    glm::dvec3 start_color = glm::dvec3(51, 115, 232) / 255.0; // glm::dvec3(231, 154, 255) / 255.0;
+    glm::dvec3 end_color = glm::dvec3(255, 59, 167) / 255.0;   // glm::dvec3(4, 21, 120) / 255.0;
     double lerp_param = (glm::dot(up, glm::normalize(ray.second - ray.first)) + 1) / 2;
     if (lerp_param > 0.5)
     {
