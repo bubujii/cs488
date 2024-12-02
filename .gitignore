@@ -31,7 +31,8 @@ A4/A4
 A4_[Ss]olution/A4
 
 */Assets/backup
-*/Assets/**
 
 lua*
 **/.vscode/**
+
+A4/output.txt
