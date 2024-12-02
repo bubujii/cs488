@@ -1,0 +1,17 @@
+Loading image: texture.png
+Loaded 4 vertices.
+Loaded 2 faces.
+Loaded 0 normals.
+F24: Calling A4_Render(
+	SceneNode:[name:root, id:0]
+  GeometryNode:[name:plane, id:2]
+	Image(width:400, height:225)
+	eye:  dvec3(0.000000, 20.000000, -50.000000)
+	view: dvec3(0.000000, 0.000000, 0.000000)
+	up:   dvec3(0.000000, 1.000000, 0.000000)
+	fovy: 60
+	ambient: dvec3(0.500000, 0.300000, 0.000000)
+	lights{
+		L[dvec3(0.900000, 0.900000, 0.900000), dvec3(0.000000, 100.000000, -200.000000), 1, 0, 0]
+	}
+)
