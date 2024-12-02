@@ -117,13 +117,12 @@ scene_root:add_child(column_right)
 
 
 
--- white_light_cam = gr.light({5, 50, -100}, {0.9, 0.4, 0.3}, {1, 0, 0})
 white_light = gr.light({-100.0, 300.0, 200.0}, {0.9, 0.9, 0.9}, {1, 0, 0})
 magenta_light = gr.light({-400.0, 100.0, -150.0}, {0.6, 0.0, 0.9}, {1, 0, 0})
 cyan_light = gr.light({400.0, 100.0, -150.0}, {0.0, 0.6, 0.9}, {1, 0, 0})
 
 test_light = gr.light({0, 300, -100}, {0.6, 0.6, 0.9}, {1, 0, 0})
 
-gr.render(scene_root, 'screenshot.png', 800, 450,
+gr.render(scene_root, 'screenshot.png', 1600, 900,
 	  {0, 15, -110}, {0, 40, 50}, {0, 1, 0}, 45,
 	  {0.5, 0.3, 0.0}, {magenta_light, cyan_light, white_light})

@@ -2139,7 +2139,7 @@ F24: Calling A4_Render(
   GeometryNode:[name:column, id:219]
   GeometryNode:[name:monkey_head_right, id:220]
   GeometryNode:[name:column_right, id:221]
-	Image(width:800, height:450)
+	Image(width:1600, height:900)
 	eye:  dvec3(0.000000, 15.000000, -110.000000)
 	view: dvec3(0.000000, 40.000000, 50.000000)
 	up:   dvec3(0.000000, 1.000000, 0.000000)
