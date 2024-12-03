@@ -71,7 +71,6 @@ Mesh::Mesh(const std::string &fname)
                 ifs >> dummy >> dummy >> n2;
                 ifs >> s3;
                 ifs >> dummy >> dummy >> n3;
-                std::cout << s1 << " " << n1 << " " << s2 << " " << n2 << " " << s3 << " " << n3 << std::endl;
                 m_faces.push_back(Triangle(s1 - 1, s2 - 1, s3 - 1, n1 - 1, n2 - 1, n3 - 1));
                 continue;
             }
@@ -121,7 +120,6 @@ Mesh::Mesh(const std::string &fname)
 
 PrimitiveHit *Mesh::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 {
-    // std::cout << "Intersecting Mesh" << std::endl;
     auto bounding_intersect = bounding_box.intersect(ray);
     if (!bounding_intersect)
     {

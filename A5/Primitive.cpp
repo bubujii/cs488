@@ -15,7 +15,6 @@ PrimitiveHit *Primitive::intersect(std::pair<glm::dvec3, glm::dvec3> ray)
 
 glm::dvec2 Primitive::uv_map(glm::dvec3 point)
 {
-    // std::cout << glm::to_string(point) << std::endl;
     glm::dvec2 uv = glm::dvec2(point.x, point.z) + glm::dvec2(0.5);
     uv.x = glm::clamp(uv.x, 0.0, 1.0);
     uv.y = glm::clamp(uv.y, 0.0, 1.0);
@@ -129,6 +128,12 @@ PrimitiveHit *intersect_cube(glm::dvec3 m_pos, double m_size, std::pair<glm::dve
     {
         tmax = tzmax;
     }
+
+    if (tmin < 0)
+    {
+        tmin = tmax;
+    }
+
     glm::dvec3 intersect_point = ray_origin + tmin * direction;
 
     glm::dvec3 shitty_normal = intersect_point - (m_pos + glm::dvec3(m_size / 2.0));
@@ -143,7 +148,6 @@ PrimitiveHit *intersect_cube(glm::dvec3 m_pos, double m_size, std::pair<glm::dve
             normal[i] = glm::sign(shitty_normal[i]);
         }
     }
-    // std::cout << glm::to_string(normal) << std::endl;
     return new PrimitiveHit(intersect_point, normal, false);
 }
 

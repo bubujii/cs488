@@ -5,7 +5,9 @@ mat2 = gr.material({0.5, 0.5, 0.5}, {0.5, 0.7, 0.5}, 25)
 mat3 = gr.material({1.0, 0.6, 0.1}, {0.5, 0.7, 0.5}, 25)
 mat4 = gr.material({0.7, 0.6, 1.0}, {0.5, 0.4, 0.8}, 25)
 rough_glass = gr.material({0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, 25,  {0.0,0.0, 0.0},  1.2, 1.0, 1.0, {0.0, 0.0, 0.0}, 10.0, 0.0)
-rough_mirror = gr.material({0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, 25,  {0.0,0.0, 0.0},  0.0, 0.0, 1.0, {0.0, 0.0, 0.0}, 0.0, 0.0)
+rough_mirror = gr.material({0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, 25,  {0.0,0.0, 0.0},  0.0, 0.0, 1.0, {0.0, 0.0, 0.0}, 0.0, 1.0)
+
+mirror = gr.material({0.0, 1.0, 1.0}, {1.0, 1.0, 1.0}, 25,  {0.0,0.0, 0.0},  0.0, 0.0, 1.0, {0.0, 0.0, 0.0}, 0.0, 0.0)
 
 scene_root = gr.node('root')
 
@@ -15,6 +17,7 @@ s1:set_material(mat1)
 
 s2 = gr.nh_sphere('s2', {200, 50, -100}, 150)
 scene_root:add_child(s2)
+-- s2:set_material(mirror)
 s2:set_material(rough_mirror)
 
 s3 = gr.nh_sphere('s3', {0, -1200, -500}, 1000)
@@ -28,7 +31,8 @@ b1:set_material(mat4)
 -- s4 = gr.nh_sphere('s4', {-100, 25, -300}, 50)
 s4 = gr.nh_sphere('s4', {-150, -085, 150}, 30)
 scene_root:add_child(s4)
-s4:set_material(mat4)
+s4:set_material(rough_glass)
+-- s4:set_material(mat4)
 
 s5 = gr.nh_sphere('s5', {0, 100, -250}, 25)
 scene_root:add_child(s5)

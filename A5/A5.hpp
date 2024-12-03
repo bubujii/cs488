@@ -31,4 +31,5 @@ void A5_Render(
 
     // Lighting parameters
     const glm::dvec3 &ambient,
-    const std::list<Light *> &lights);
+    const std::list<Light *> &lights,
+    bool anti_aliasing = false);

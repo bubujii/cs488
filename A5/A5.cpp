@@ -305,7 +305,8 @@ void A5_Render(
 
     // Lighting parameters
     const glm::dvec3 &ambient,
-    const std::list<Light *> &lights)
+    const std::list<Light *> &lights,
+    bool anti_aliasing)
 {
 
     std::cout << "F24: Calling A5_Render(\n"
@@ -368,24 +369,24 @@ void A5_Render(
     {
         for (uint x = 0; x < w; ++x)
         {
-            // if (should_anti_alias(unaliased_image, x, y, threshold, w, h))
-            // {
-            //     glm::dvec3 new_color = glm::dvec3(0);
-            //     for (int p_count = 0; p_count < 20; ++p_count)
-            //     {
-            //         glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
-            //         double x_jitter = ((rand() % 100) - 100) / 100.0;
-            //         double y_jitter = ((rand() % 100) - 100) / 100.0;
-            //         pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
-            //         std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
-            //         auto color = get_color(root, ray, ambient, lights, 0, up);
-            //         new_color += color;
-            //     }
-            //     new_color /= 20.0;
-            //     image(x, y, 0) = new_color.r;
-            //     image(x, y, 1) = new_color.g;
-            //     image(x, y, 2) = new_color.b;
-            // }
+            if (anti_aliasing && should_anti_alias(unaliased_image, x, y, threshold, w, h))
+            {
+                glm::dvec3 new_color = glm::dvec3(0);
+                for (int p_count = 0; p_count < 20; ++p_count)
+                {
+                    glm::dvec3 pixel = pixel00 + (double(x) * pixel_delta_x) + (double(y) * pixel_delta_y);
+                    double x_jitter = ((rand() % 100) - 100) / 100.0;
+                    double y_jitter = ((rand() % 100) - 100) / 100.0;
+                    pixel += x_jitter * pixel_delta_x + y_jitter * pixel_delta_y;
+                    std::pair<glm::dvec3, glm::dvec3> ray = std::make_pair(eye, pixel);
+                    auto color = get_color(root, ray, ambient, lights, 0, up);
+                    new_color += color;
+                }
+                new_color /= 20.0;
+                image(x, y, 0) = new_color.r;
+                image(x, y, 1) = new_color.g;
+                image(x, y, 2) = new_color.b;
+            }
         }
         std::clog << "\rProgress: " << std::setprecision(2) << std::fixed << ((y * w) / total_pixels) * 100 << "% " << std::flush;
     }

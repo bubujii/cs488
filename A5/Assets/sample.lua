@@ -69,7 +69,7 @@ mountain:scale(20, 5, 3)
 mountain:translate(30, -25, 150)
 scene_root:add_child(mountain)
 
-tree = gr.ltree('tree', {{"F", "F[C/C+A\\][C\\C+B/]"}, {"A", "A[C/C+A\\][C\\B/]"}, {"B", "B[C/A\\][C\\C+B/]"} }, 4, 90.0, 200, 10)
+tree = gr.ltree('tree', {{"F", "F[C/C|A\\][C\\C|B/]"}, {"A", "A[C/C|A\\][C\\B/]"}, {"B", "B[C/A\\][C\\C|B/]"} }, 4, 90.0, 200, 10)
 tree:set_material(rust)
 tree:scale(0.1, 0.15, 0.1)
 tree:rotate('X', 90)
@@ -124,4 +124,4 @@ test_light = gr.light({0, 300, -100}, {0.6, 0.6, 0.9}, {1, 0, 0})
 
 gr.render(scene_root, 'screenshot.png', 1600, 900,
 	  {0, 15, -110}, {0, 40, 50}, {0, 1, 0}, 45,
-	  {0.5, 0.3, 0.0}, {magenta_light, cyan_light, white_light})
+	  {0.5, 0.3, 0.0}, {magenta_light, cyan_light, white_light}, false)

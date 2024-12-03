@@ -1,24 +1,45 @@
-# avondemh - CS 488 F 2024 - A4
+# avondemh - CS 488 F 2024 - A5
 
 ## Compilation
 
-program is compiled normally with `make` and `./A4 Assets/sample.lua` \
+program is compiled normally with `make` and `./A5 Assets/sample.lua` \
 The program can be called one layer outside of the Assets directory as well
 
 ## Manual
 
-### Extra feature
+### Code referenced and images used:
 
-Refraction: at the moment, a "transparent material will not cast shadows because it looks better that way - it's technically a bug right now but I like the look more for my final scene.
+-   McBride, Martin. “PythonInformer - L Systems - Creating Trees and Ferns.” Pythoninformer.com, 2021, www.pythoninformer.com/generative-art/grammars/l-systems-trees/.
 
-### Code referenced / used
+-   O’Brien, Nick. “Diamond-Square Algorithm Explanation and C++ Implementation.” Medium, 14 Aug. 2018, medium.com/@nickobrien/diamond-square-algorithm-explanation-and-c-implementation-5efa891e486f.
 
-The following guides were followed for intersect code:
+-   View. “View from above Seamless Background Texture Neon Vector Image on VectorStock.” VectorStock, 25 June 2018, www.vectorstock.com/royalty-free-vector/view-from-above-seamless-background-texture-neon-vector-21183805.
 
--   https://raytracing.github.io/books/RayTracingInOneWeekend.html
--   https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection.html
--   https://en.wikipedia.org/wiki/M%C3%B6ller%E2%80%93Trumbore_intersection_algorithm
+-   “Water Ripples (Texture) - Normal Map.” Filterforge.com, 2024, www.filterforge.com/filters/940-normal.html.
 
 ### Scene
 
-The scene is meant to be a little bit vaporwave looking with the colours. Obviously the almighty glass cat rules all.
+The cat has expanded its empire, beware.
+
+### Issues
+
+Due to time limitiation, the mountain peaks are hard-coded.
+
+Beer's law was implemented incorrectly in the final version image, however, an un-anti-aliased version which is correct is included under `screenshot-dark.png`
+
+### Objectives:
+
+-   Cylinders
+-   Texture mapping
+-   Bump mapping
+-   Adaptive anti-aliasing
+-   Phong shading
+-   Glossy refraction / reflection
+-   Mirror reflection
+-   L-system trees
+-   Fractal mountain generation
+-   Nice Scene
+
+### Extra
+
+-   Beer's Law

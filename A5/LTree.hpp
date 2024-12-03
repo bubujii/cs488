@@ -37,7 +37,6 @@ public:
             current = next;
         }
         final_structure = current;
-        std::cout << final_structure << std::endl;
     }
 
     GeometryNode *render_tree()
@@ -101,7 +100,6 @@ public:
                 root->translate(glm::dvec3(0, 0.95 * m_length, 0));
             }
         }
-        std::cout << *root << std::endl;
         return root;
     }
 

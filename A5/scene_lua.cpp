@@ -461,8 +461,15 @@ extern "C" int gr_render_cmd(lua_State *L)
         lua_pop(L, 1);
     }
 
+    int args = lua_gettop(L);
+    bool anti_aliasing = false;
+    if (args > 10)
+    {
+        anti_aliasing = lua_toboolean(L, 11);
+    }
+
     Image im(width, height);
-    A5_Render(root->node, im, eye, view, up, fov, ambient, lights);
+    A5_Render(root->node, im, eye, view, up, fov, ambient, lights, anti_aliasing);
     im.savePng(filename);
 
     return 0;

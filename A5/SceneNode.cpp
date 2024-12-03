@@ -147,10 +147,10 @@ std::ostream &operator<<(std::ostream &os, const SceneNode &node)
 
     os << "]\n";
 
-    for (const SceneNode *child : node.children)
-    {
-        os << "  " << *child;
-    }
+    // for (const SceneNode *child : node.children)
+    // {
+    //     os << "  " << *child;
+    // }
     return os;
 }
 
